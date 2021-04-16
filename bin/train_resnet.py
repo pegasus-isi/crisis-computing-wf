@@ -254,8 +254,8 @@ def save_plots(train, val, metric):
     """
     epochs = range(1,EPOCHS+1)
     plt.plot(epochs, train, 'g', label='Training ' + metric)
-    plt.plot(epochs, val, 'r', label='Validation ' + metric)
-    plt.title('Training vs Validation ' + metric)
+    plt.plot(epochs, val, 'r', label='Testing ' + metric)
+    plt.title('Training vs Testing ' + metric)
     plt.xlabel('Epochs')
     plt.ylabel(metric)
     plt.legend()

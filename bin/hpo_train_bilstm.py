@@ -3,6 +3,9 @@
 import pandas as pd
 import numpy as np
 import tensorflow as tf
+import argparse
+import optuna
+import joblib
 import os
 import matplotlib.pyplot as plt
 from keras.layers import Dense,Input, LSTM, Bidirectional, Activation, Conv1D, GRU
@@ -65,8 +68,14 @@ class RocAucEvaluation(Callback):
             print("\n ROC-AUC - epoch: {:d} - score: {:.6f}".format(epoch+1, score))
 
 
+class LossHistory(Callback):
+    def on_train_begin(self, logs={}):
+        self.losses = []
 
-def BiLSTM(embedding_matrix, LR, dropout_val):
+    def on_batch_end(self, batch, logs={}):
+        self.losses.append(logs.get('loss'))
+        
+def BiLSTM(LR, dropout_val, embedding_matrix):
     
     sequence_input = Input(shape=(max_len, ))
     x = Embedding(max_features, embed_size, weights=[embedding_matrix],trainable = False)(sequence_input)
@@ -97,22 +106,28 @@ def get_weights(train_val_df):
     class_weight = {0: weight_for_0, 1: weight_for_1}
 
     return class_weight
- 
 
-def prepare_data_train(train_df, test_df, embeddings_index):
+
+def prepare_data_train(train_df, valid_df, test_df, embeddings_index):
 
     X_train = train_df['tweet_text']
     Y_train = train_df['text_info']
+
+    X_valid = valid_df['tweet_text']
+    Y_valid = valid_df['text_info']
 
     X_test = test_df['tweet_text']
     Y_test = test_df['text_info']
 
     tok = text.Tokenizer(num_words=max_features, lower=True)
     
-    tok.fit_on_texts(list(X_train)+list(X_test))
+    tok.fit_on_texts(list(X_train)+list(X_test)+list(X_valid))
 
     X_train = tok.texts_to_sequences(X_train)
     X_train = sequence.pad_sequences(X_train, maxlen=max_len)
+
+    X_valid = tok.texts_to_sequences(X_valid)
+    X_valid = sequence.pad_sequences(X_valid, maxlen=max_len)
 
     X_test = tok.texts_to_sequences(X_test)
     X_test = sequence.pad_sequences(X_test, maxlen=max_len)
@@ -131,24 +146,9 @@ def prepare_data_train(train_df, test_df, embeddings_index):
             # words not found in embedding index will be all-zeros.
             embedding_matrix[i] = embedding_vector
             
-    return embedding_matrix, X_train, Y_train, X_test, Y_test
+    return embedding_matrix, X_train, Y_train, X_test, Y_test, X_valid, Y_valid
 
 
-def save_plots(train, val, metric):
-    """
-    plots train vs validation loss graph
-    
-    """
-    ep = range(1,epochs+1)
-    plt.plot(ep, train, 'g', label='Training ' + metric)
-    plt.plot(ep, val, 'r', label='Testing ' + metric)
-    plt.title('Training vs Testing ' + metric)
-    plt.xlabel('Epochs')
-    plt.ylabel(metric)
-    plt.legend()
-    plt.savefig("{}_curve_bilstm.png".format(metric))
-    plt.close()
-    
 
 def get_embeddings():
     embeddings_index = {}
@@ -161,37 +161,93 @@ def get_embeddings():
             embeddings_index[word] = coefs
     return embeddings_index
 
-def get_best_params():
-    
-    with open('best_bilstm_hpo_params.txt') as f:
-        info = eval(f.readline())
-  
-    return info['params']
 
-if __name__ == '__main__':
+def objective(trial):
+    
+    print("Performing trial {}".format(trial.number))
     
     train_df = pd.read_csv(DATA_PATH +'train_tweets.csv')
     valid_df = pd.read_csv(DATA_PATH +'val_tweets.csv')
     test_df  = pd.read_csv(DATA_PATH + 'test_tweets.csv')
     
-    final_train_df = pd.concat([train_df, valid_df]) 
+    LR = trial.suggest_categorical("LR", [1e-3, 1e-4, 1e-5])
+    dropout_val = trial.suggest_categorical("dropout_val", [0.1, 0.2, 0.4])
     
     embeddings_index = get_embeddings()
-   
-    embedding_matrix, X_train, Y_train, X_test, Y_test = prepare_data_train(final_train_df, test_df, embeddings_index)
-    
-    params = get_best_params()
-    LR = float(params['LR'])
-    dropout_val  = float(params['dropout_val'])
-    model = BiLSTM(embedding_matrix, LR, dropout_val)
+    embedding_matrix, X_train, Y_train, X_test, Y_test, X_valid, Y_valid = prepare_data_train(train_df, valid_df, test_df, embeddings_index)
 
+    model = BiLSTM(LR, dropout_val, embedding_matrix)
+    history = LossHistory()
+    
     training_history = model.fit(X_train, Y_train, batch_size=128, epochs=epochs,\
-                             validation_data = (X_test, Y_test),\
-                             class_weight = class_weight, callbacks=[EarlyStopping(monitor='val_loss',min_delta=0.001)], verbose=1)
-
+                             validation_data = (X_valid, Y_valid),\
+                             class_weight = class_weight, callbacks=[EarlyStopping(monitor='val_loss',min_delta=0.001), history], verbose=1)
     
-    save_plots(training_history.history['loss'], training_history.history['val_loss'], 'Loss')
-    save_plots(training_history.history['accuracy'], training_history.history['val_accuracy'], 'Accuracy')
+    return np.average(history.losses)
+   
+    
+def hpo_monitor(study, trial):
+    """
+    Save optuna hpo study
+    """
+    joblib.dump(study,"hpo_crisis_bilstm.pkl")
+    
+    
+def get_best_params(best):
+    """
+    Saves best parameters of Optuna Study.
+    """
+    
+    parameters = {}
+    parameters["trial_id"] = best.number
+    parameters["value"] = best.value
+    parameters["params"] = best.params
+    
+    f = open("best_bilstm_hpo_params.txt","w")
+    f.write(str(parameters))
+    f.close()
+    
+def load_study():
+    """
+    Creates a new study or loads an existing study
+    """
+    
+    try:
+        STUDY = joblib.load("hpo_crisis_bilstm.pkl")
+        print("Successfully loaded the existing study!")
+        
+        rem_trials = TRIALS - len(STUDY.trials_dataframe())
+        
+        if rem_trials > 0:
+            STUDY.optimize(objective, n_trials=rem_trials, callbacks=[hpo_monitor])
+        else:
+            print("All trials done!")
+            pass
+        
+    except Exception as e:
+        print(e)
+        print("Creating a new study!")
+        
+        STUDY = optuna.create_study(study_name='crisis-computing')
+        STUDY.optimize(objective, n_trials=TRIALS, callbacks=[hpo_monitor])
 
-    # Save model
-    model.save('bilstm_final_model.h5')
+    best_trial = STUDY.best_trial
+    get_best_params(best_trial)
+    
+    return
+
+def main():
+    
+    global TRIALS
+    parser = argparse.ArgumentParser(description="Crisis Computing Workflow")
+    parser.add_argument('--trials', type=int, default=1, help="Enter number of trials to perform HPO")
+    args = parser.parse_args()
+    
+    TRIALS = args.trials
+    load_study()
+    
+    return
+
+if __name__ == "__main__":
+    
+    main()

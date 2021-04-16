@@ -29,4 +29,9 @@ RUN chmod 777 ./bin/train_resnet.py
 COPY hpo_train_resnet.py ./bin
 RUN chmod 777 ./bin/hpo_train_resnet.py
 COPY utils.py ./bin
+COPY train_bilstm.py ./bin
+RUN chmod 777 ./bin/train_bilstm.py
+COPY hpo_train_bilstm.py ./bin
+RUN chmod 777 ./bin/hpo_train_bilstm.py
+COPY utils.py ./bin
 RUN chmod 777 ./bin/utils.py
