@@ -28,6 +28,7 @@ EPOCHS = 1
 CHECKPOINT = 'resnet_final_model.pth'
 OUT_FILE_TRAIN = 'resnet_train_output.csv'
 OUT_FILE_TEST = 'resnet_test_output.csv'
+CACHE = {}
 
 PATH = ""
 #--------------------------------------------------------------------------------------------------------------------------
@@ -78,8 +79,12 @@ def run_inference(model, data, dtype):
     model.eval()
     actual = []
     preds = []
+    
     with torch.no_grad():  
         for image_id, image, label in data:
+            if str(image_id) in CACHE.keys():
+                continue
+            CACHE[str(image_id)] = 1
             image = image.to(DEVICE)
             label = label.type(torch.float).to(DEVICE)
             
@@ -87,7 +92,7 @@ def run_inference(model, data, dtype):
             predicted = torch.round(output_prob).squeeze(-1)
             actual.append(label.cpu().item())
             preds.append(predicted.cpu().item())
-            
+               
             csv_ob.writerow([image_id.cpu().item() ,output_prob.cpu().item(), int(predicted.cpu().item()), int(label.cpu().item())])
     
     if dtype == 'test':
@@ -138,8 +143,7 @@ class DatasetLoader(Dataset):
     def __getitem__(self, idx):
        
         image = Image.open(self.data[idx]).convert('RGB')
-
-        # label 0: "Informative" label 1: "Non-Informative"    
+ 
         label = int(re.findall(r'[0-9]+', self.data[idx])[-1])
         image_id = int(re.findall(r'[0-9]+', self.data[idx])[0])
                     
@@ -183,9 +187,7 @@ def get_dataloader(data_type, transformation):
 
     return dataset_loader
 
-
 #--------------------------------------------------------------------------------------------------------------------------
-
 
 if __name__ == "__main__":
     
@@ -194,7 +196,5 @@ if __name__ == "__main__":
     test_data = get_dataloader('test', test_transform)
     model = Resnet().to(DEVICE)
     model.state_dict(torch.load(CHECKPOINT))
-    run_inference(model, train_data, 'train')
     run_inference(model, test_data, 'test')
-    
-
+    run_inference(model, train_data, 'train')

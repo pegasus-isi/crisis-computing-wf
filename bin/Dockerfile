@@ -13,6 +13,7 @@ RUN pip install Pillow
 RUN pip install optuna==2.0.0
 RUN pip install tensorflow
 RUN pip install keras
+RUN pip install seaborn
 
 RUN mkdir ./bin
 
@@ -37,5 +38,7 @@ COPY resnet_inference.py ./bin
 RUN chmod 777 ./bin/resnet_inference.py
 COPY bilstm_inference.py ./bin
 RUN chmod 777 ./bin/bilstm_inference.py
+COPY late_fusion.py ./bin
+RUN chmod 777 ./bin/late_fusion.py
 COPY utils.py ./bin
 RUN chmod 777 ./bin/utils.py

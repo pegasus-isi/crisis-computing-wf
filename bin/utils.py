@@ -105,14 +105,14 @@ def get_tweets():
     
 def add_labels(images, label):
     """
-    attaches label _0 if class in informative or _1 if class in non-informative
+    attaches label _1 if class in informative or _0 if class in non-informative
     :params: images and their class
     
     """
     if label == 'informative':
-        prefix = '_0'
-    else:
         prefix = '_1'
+    else:
+        prefix = '_0'
 
     for image in images:
         name = image.split('/')[-1]
