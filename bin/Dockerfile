@@ -33,5 +33,9 @@ COPY train_bilstm.py ./bin
 RUN chmod 777 ./bin/train_bilstm.py
 COPY hpo_train_bilstm.py ./bin
 RUN chmod 777 ./bin/hpo_train_bilstm.py
+COPY resnet_inference.py ./bin
+RUN chmod 777 ./bin/resnet_inference.py
+COPY bilstm_inference.py ./bin
+RUN chmod 777 ./bin/bilstm_inference.py
 COPY utils.py ./bin
 RUN chmod 777 ./bin/utils.py

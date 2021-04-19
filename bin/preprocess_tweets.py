@@ -33,4 +33,4 @@ if __name__ == "__main__":
     
     tweets_df = pd.read_csv('all_tweets_df.csv')
     tweets_df['tweet_text'] = tweets_df.apply(lambda x: preprocess_tweets(x['tweet_text']), axis= 1)
-    tweets_df.to_csv('preprocessed_tweets.csv', mode='a')
+    tweets_df.to_csv('preprocessed_tweets.csv', mode='a', index=False)

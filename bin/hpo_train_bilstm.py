@@ -29,7 +29,6 @@ import itertools
 
 target_names = ["Informative","Noninforamtive"]
 
-max_features = 1000
 max_len = 150
 embed_size = 200
 EMBEDDING_FILE = 'glove.twitter.27B.200d.txt'
@@ -75,7 +74,7 @@ class LossHistory(Callback):
     def on_batch_end(self, batch, logs={}):
         self.losses.append(logs.get('loss'))
         
-def BiLSTM(LR, dropout_val, embedding_matrix):
+def BiLSTM(LR, dropout_val, embedding_matrix, max_features):
     
     sequence_input = Input(shape=(max_len, ))
     x = Embedding(max_features, embed_size, weights=[embedding_matrix],trainable = False)(sequence_input)
@@ -108,7 +107,7 @@ def get_weights(train_val_df):
     return class_weight
 
 
-def prepare_data_train(train_df, valid_df, test_df, embeddings_index):
+def prepare_data_train(train_df, valid_df, test_df, embeddings_index, max_features):
 
     X_train = train_df['tweet_text']
     Y_train = train_df['text_info']
@@ -135,7 +134,10 @@ def prepare_data_train(train_df, valid_df, test_df, embeddings_index):
     word_index = tok.word_index
     
     #prepare embedding matrix
+    
+    
     num_words = min(max_features, len(word_index) + 1)
+   
     embedding_matrix = np.zeros((num_words, embed_size))
     
     for word, i in word_index.items():
@@ -146,7 +148,7 @@ def prepare_data_train(train_df, valid_df, test_df, embeddings_index):
             # words not found in embedding index will be all-zeros.
             embedding_matrix[i] = embedding_vector
             
-    return embedding_matrix, X_train, Y_train, X_test, Y_test, X_valid, Y_valid
+    return embedding_matrix, X_train, Y_train, X_test, Y_test, X_valid, Y_valid, num_words
 
 
 
@@ -165,6 +167,7 @@ def get_embeddings():
 def objective(trial):
     
     print("Performing trial {}".format(trial.number))
+    global max_features
     
     train_df = pd.read_csv(DATA_PATH +'train_tweets.csv')
     valid_df = pd.read_csv(DATA_PATH +'val_tweets.csv')
@@ -174,9 +177,10 @@ def objective(trial):
     dropout_val = trial.suggest_categorical("dropout_val", [0.1, 0.2, 0.4])
     
     embeddings_index = get_embeddings()
-    embedding_matrix, X_train, Y_train, X_test, Y_test, X_valid, Y_valid = prepare_data_train(train_df, valid_df, test_df, embeddings_index)
-
-    model = BiLSTM(LR, dropout_val, embedding_matrix)
+    max_features = 1000
+    embedding_matrix, X_train, Y_train, X_test, Y_test, X_valid, Y_valid, embed_size = prepare_data_train(train_df, valid_df, test_df, embeddings_index, max_features)
+    max_features = min(1000, embed_size) 
+    model = BiLSTM(LR, dropout_val, embedding_matrix, max_features)
     history = LossHistory()
     
     training_history = model.fit(X_train, Y_train, batch_size=128, epochs=epochs,\

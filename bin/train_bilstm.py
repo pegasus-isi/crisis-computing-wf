@@ -26,12 +26,12 @@ import itertools
 
 target_names = ["Informative","Noninforamtive"]
 
-max_features = 1000
+
 max_len = 150
 embed_size = 200
 EMBEDDING_FILE = 'glove.twitter.27B.200d.txt'
 class_weight = {0: 1.48, 1: 0.75}
-epochs = 3
+epochs = 2
 
 
 METRICS = [
@@ -66,7 +66,7 @@ class RocAucEvaluation(Callback):
 
 
 
-def BiLSTM(embedding_matrix, LR, dropout_val):
+def BiLSTM(embedding_matrix, LR, dropout_val, max_features):
     
     sequence_input = Input(shape=(max_len, ))
     x = Embedding(max_features, embed_size, weights=[embedding_matrix],trainable = False)(sequence_input)
@@ -99,7 +99,7 @@ def get_weights(train_val_df):
     return class_weight
  
 
-def prepare_data_train(train_df, test_df, embeddings_index):
+def prepare_data_train(train_df, test_df, embeddings_index, max_features):
 
     X_train = train_df['tweet_text']
     Y_train = train_df['text_info']
@@ -131,7 +131,7 @@ def prepare_data_train(train_df, test_df, embeddings_index):
             # words not found in embedding index will be all-zeros.
             embedding_matrix[i] = embedding_vector
             
-    return embedding_matrix, X_train, Y_train, X_test, Y_test
+    return embedding_matrix, X_train, Y_train, X_test, Y_test, num_words
 
 
 def save_plots(train, val, metric):
@@ -170,28 +170,31 @@ def get_best_params():
 
 if __name__ == '__main__':
     
+    global max_features
+    
     train_df = pd.read_csv(DATA_PATH +'train_tweets.csv')
     valid_df = pd.read_csv(DATA_PATH +'val_tweets.csv')
-    test_df  = pd.read_csv(DATA_PATH + 'test_tweets.csv')
+    test_df  = pd.read_csv(DATA_PATH +'test_tweets.csv')
     
     final_train_df = pd.concat([train_df, valid_df]) 
     
     embeddings_index = get_embeddings()
-   
-    embedding_matrix, X_train, Y_train, X_test, Y_test = prepare_data_train(final_train_df, test_df, embeddings_index)
     
+    max_features = 1000
+    embedding_matrix, X_train, Y_train, X_test, Y_test, embeding_size = prepare_data_train(final_train_df, test_df, embeddings_index, max_features)
+    max_features = min(1000, embeding_size) 
     params = get_best_params()
     LR = float(params['LR'])
     dropout_val  = float(params['dropout_val'])
-    model = BiLSTM(embedding_matrix, LR, dropout_val)
+    model = BiLSTM(embedding_matrix, LR, dropout_val, max_features)
 
     training_history = model.fit(X_train, Y_train, batch_size=128, epochs=epochs,\
                              validation_data = (X_test, Y_test),\
                              class_weight = class_weight, callbacks=[EarlyStopping(monitor='val_loss',min_delta=0.001)], verbose=1)
 
     
-    save_plots(training_history.history['loss'], training_history.history['val_loss'], 'Loss')
-    save_plots(training_history.history['accuracy'], training_history.history['val_accuracy'], 'Accuracy')
+    save_plots(np.array(training_history.history['loss']), np.array(training_history.history['val_loss']), 'Loss')
+    save_plots(np.array(training_history.history['accuracy']), np.array(training_history.history['val_accuracy']), 'Accuracy')
 
     # Save model
     model.save('bilstm_final_model.h5')
