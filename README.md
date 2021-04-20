@@ -106,3 +106,7 @@ Uses Mean Probability Concatenation, Logistic Regression and MLP Decision Policy
           python bin/late_fusion.py 
      
 Outputs: confusion_matrix_MPC.png, confusion_matrix_LR.png, confusion_matrix_MLP.png, report_MPC.png, report_LR.png, report_MLP.png
+
+<h3>Workflow Diagram </h3>
+
+![workflow](/crisis-wf.png)
