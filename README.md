@@ -71,6 +71,7 @@ Outputs:
 
 Trains models with best hyperparameters obtained from HPO
 
+
 For Images:
       
           python bin/train_resnet.py 
@@ -80,7 +81,7 @@ For Text:
           python bin/train_bilstm.py
      
 Outputs: 
-  Image: Loss_curve_resnet.png, Accuracy_curve_resnet.png, resnet_final_model.pth
+  Image: Loss_curve_resnet.png, Accuracy_curve_resnet.png, resnet_final_model.pth <br>
   Text: Loss_curve_bilstm.png, Accuracy_curve_bilstm.png, bilstm_final_model.h5
   
 <h3>Model Inference </h3>
@@ -96,7 +97,7 @@ For Text:
           python bin/bilstm_inference.py
      
 Outputs: 
-  Image: resnet_train_output.csv, resnet_test_output.csv, resnet_confusion_matrix.png
+  Image: resnet_train_output.csv, resnet_test_output.csv, resnet_confusion_matrix.png<br>
   Text: bilstm_train_output.csv, bilstm_test_output.csv, bilstm_confusion_matrix.png
 
 <h3>Late Fusion </h3>
