@@ -93,8 +93,8 @@ def get_tweets():
     
     final_df = pd.concat([info_df, noninfo_df])
     
-   
-    os.mkdir(FINAL_TWEETS)
+    if not os.path.isdir(FINAL_TWEETS): 
+        os.mkdir(FINAL_TWEETS)
     filename = "all_tweets_df.csv" 
     final_df.to_csv(FINAL_TWEETS + filename, index = False )
     

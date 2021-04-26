@@ -194,7 +194,8 @@ def hpo_monitor(study, trial):
     """
     Save optuna hpo study
     """
-    joblib.dump(study,"hpo_crisis_bilstm.pkl")
+    joblib.dump(study, "temp_checkpoint.pkl")
+    os.rename('temp_checkpoint.pkl', 'hpo_bilstm_resnet.pkl')
     
     
 def get_best_params(best):

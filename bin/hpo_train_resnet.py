@@ -21,12 +21,14 @@ MEAN = 0.4905, 0.4729, 0.4560
 STD = 0.2503, 0.2425, 0.2452
 BATCH_SIZE = 2
 EPOCHS = 2
+PATIENCE = 6
 
 # Paths
 CHECKPOINT_DIR = ''
 CHECKPOINT = 'resnet_final_model.pth'
 PATH = ""
 #--------------------------------------------------------------------------------------------------------------------------
+
 
 class Resnet(torch.nn.Module):
     def __init__(self):
@@ -58,6 +60,55 @@ class Resnet(torch.nn.Module):
 
         
 #--------------------------------------------------------------------------------------------------------------------------
+
+class EarlyStopping:
+    """
+    Early stops the training if validation loss doesn't improve after a given patience.
+    """
+    def __init__(self, patience=4, verbose=False, delta=0, path= CHECKPOINT):
+        """
+        Args:
+            patience (int): How long to wait after last time validation loss improved.
+                            Default: 10
+            verbose (bool): If True, prints a message for each validation loss improvement.
+                            Default: False
+            delta (float): Minimum change in the monitored quantity to qualify as an improvement.
+                            Default: 0
+            path (str): Path for the checkpoint to be saved to.
+                            Default: 'early_stopping_vgg16model.pth'
+        """
+        
+        self.patience = patience
+        self.verbose = verbose
+        self.counter = 0
+        self.best_score = None
+        self.early_stop = False
+        self.val_loss_min = np.Inf
+        self.delta = delta
+        self.path = path
+        
+    def __call__(self, val_loss, model):
+        score = -val_loss
+        if self.best_score is None:
+            self.best_score = score
+            self.save_checkpoint(val_loss, model)
+        elif score < self.best_score + self.delta:
+            self.counter += 1
+            if self.counter >= self.patience:
+                self.early_stop = True
+        else:
+            self.best_score = score
+            self.save_checkpoint(val_loss, model)
+            self.counter = 0
+            
+    def save_checkpoint(self, val_loss, model):
+        """
+        saves the current best version of the model if there is decrease in validation loss
+        """
+        torch.save(model.state_dict(), self.path)
+        self.vall_loss_min = val_loss
+
+# --------------------------------------------------------------------------------------------------------------------------
 
 def train_loop(model, t_dataset, v_dataset, criterion, optimizer):
     """
@@ -141,6 +192,7 @@ def train(train, val, trial):
     model = Resnet().to(DEVICE)
     optimizer = torch.optim.Adam(model.parameters(), lr=LR, betas=(0.9, 0.999))
     criterion = torch.nn.BCELoss()
+    early_stop = EarlyStopping(patience=PATIENCE)
     
     for epoch in range(EPOCHS):
 
@@ -155,6 +207,12 @@ def train(train, val, trial):
         print("Training loss: {0:.4f}  Train Accuracy: {1:0.2f}".format(epoch_train_loss, train_accuracy))
         print("Val loss: {0:.4f}  Val Accuracy: {1:0.2f}".format(epoch_val_loss, val_accuracy))
         print("--------------------------------------------------------")
+        early_stop(epoch_val_loss, model)
+        
+        if early_stop.early_stop:
+            print("Early stopping")
+            break
+            
         if trial.should_prune():
             raise optuna.exceptions.TrialPruned()
         
@@ -183,8 +241,6 @@ class DatasetLoader(Dataset):
     def __getitem__(self, idx):
        
         image = Image.open(self.data[idx]).convert('RGB')
-
-        # label 0: "Informative" label 1: "Non-Informative"
 
         label = int(re.findall(r'[0-9]+', self.data[idx])[-1])
      
@@ -276,7 +332,8 @@ def hpo_monitor(study, trial):
     """
     Save optuna hpo study
     """
-    joblib.dump(study, CHECKPOINT_DIR+"hpo_crisis_resnet.pkl")
+    joblib.dump(study, "temp.pkl")
+    os.rename('temp.pkl', 'checkpoint_hpo.pkl')
     
     
 def get_best_params(best):
@@ -293,13 +350,14 @@ def get_best_params(best):
     f.write(str(parameters))
     f.close()
     
+    
 def load_study():
     """
     Creates a new study or loads an existing study
     """
     
     try:
-        STUDY = joblib.load(CHECKPOINT_DIR +"hpo_crisis_resnet.pkl")
+        STUDY = joblib.load(CHECKPOINT_DIR +"checkpoint_hpo.pkl")
         print("Successfully loaded the existing study!")
         
         rem_trials = TRIALS - len(STUDY.trials_dataframe())

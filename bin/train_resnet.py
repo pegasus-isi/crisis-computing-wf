@@ -21,8 +21,9 @@ BATCH_SIZE = 2
 EPOCHS = 1
 PATIENCE = 5
 # Paths
-
-CHECKPOINT = 'resnet_final_model.pth'
+EARLY_STOPPING_PATH = 'earlystopping.pth'
+CHECKPOINT =  'checkpoint_resnet.pth'
+FINAL_OUTPUT = 'resnet_final_model.pth'
 PATH = ""
 #--------------------------------------------------------------------------------------------------------------------------
 
@@ -59,7 +60,7 @@ class EarlyStopping:
     """
     Early stops the training if validation loss doesn't improve after a given patience.
     """
-    def __init__(self, patience=4, verbose=False, delta=0, path= CHECKPOINT):
+    def __init__(self, patience=4, verbose=False, delta=0, path= EARLY_STOPPING_PATH):
         """
         Args:
             patience (int): How long to wait after last time validation loss improved.
@@ -183,7 +184,14 @@ def train(train, test, LR):
     test_acc = []
     used_early_stopping = False
     
-    model = Resnet().to(DEVICE)
+    try:
+        model = Resnet().to(DEVICE)
+        model.load_state_dict(torch.load(CHECKPOINT))
+        
+    except Exception as e:
+        print("No saved model found!")
+        model = Resnet().to(DEVICE)
+            
     optimizer = torch.optim.Adam(model.parameters(), lr=LR, betas=(0.9, 0.999))
     criterion = torch.nn.BCELoss()
     early_stop = EarlyStopping(patience=PATIENCE)
@@ -199,8 +207,11 @@ def train(train, test, LR):
         test_losses.append(epoch_test_loss)
         test_acc.append(test_accuracy)
         
+        early_stop(epoch_test_loss, model)
+        
         if early_stop.early_stop:
             print("Early stopping")
+            os.rename(EARLY_STOPPING_PATH, FINAL_OUTPUT)
             used_early_stopping  = True
             break
             
@@ -208,6 +219,9 @@ def train(train, test, LR):
         print("Val loss: {0:.4f}  Val Accuracy: {1:0.2f}".format(epoch_test_loss, test_accuracy))
         print("--------------------------------------------------------")
         
+        if epoch%5==0:
+            torch.save(model.state_dict(), "temp_model.pth")
+            os.rename("temp_model.pth", CHECKPOINT)
         
     print("Training done!")
     
@@ -345,4 +359,5 @@ if __name__ == "__main__":
     # save model
     if early_stopping == False:
         torch.save(model.state_dict(), CHECKPOINT)
+        os.rename(CHECKPOINT, FINAL_OUTPUT)
 
