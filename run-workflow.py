@@ -84,26 +84,11 @@ def replica_catalogue(dataset, all_tweets_path, tweets_file_name, EMBEDDING_BASE
     hpo_checkpoint_object = File("checkpoint_hpo.pkl")
     rc.add_replica("local", hpo_checkpoint_object, os.path.join(os.getcwd(), "checkpoint_hpo.pkl"))
 
-    # Supcon file objects
-    supcon_checkpoint = open("checkpoint_supcon.pth", 'w')
-    supcon_checkpoint_object = File("checkpoint_supcon.pth")
-    rc.add_replica("local", supcon_checkpoint_object, os.path.join(os.getcwd(), "checkpoint_supcon.pth"))
-
-    supcon_util_obj = File('supcon_util.py')
-    rc.add_replica("local", supcon_util_obj, os.path.join(os.getcwd(), "bin/supcon_util.py"))
-
-    resnet_big_obj = File('resnet_big.py')
-    rc.add_replica("local", resnet_big_obj, os.path.join(os.getcwd(), "bin/resnet_big.py"))
-
-    losses_obj = File('losses.py')
-    rc.add_replica("local", losses_obj, os.path.join(os.getcwd(), "bin/losses.py"))
-
-
     rc.add_replica("local", tweets_csv_name, all_tweets_path)
     rc.add_replica("local", glove_embeddings, os.path.join(os.getcwd(), os.path.join(EMBEDDING_BASE_PATH, GLOVE_EMBEDDING_FILE)))            
     rc.write()
 
-    return input_images, tweets_csv_name, glove_embeddings, resnet_checkpoint_object, hpo_checkpoint_object, supcon_checkpoint_object, supcon_util_obj, resnet_big_obj, losses_obj
+    return input_images, tweets_csv_name, glove_embeddings, resnet_checkpoint_object, hpo_checkpoint_object
 
 
 
@@ -207,29 +192,12 @@ def transformation_catalogue():
                         container=crisis_container
                     )
 
-    # train SupCon
-    main_supcon = Transformation(
-                        "main_supcon",
-                        site = 'local',
-                        pfn = os.path.join(os.getcwd(), "bin/main_supcon.py"),
-                        is_stageable = True,
-                        container=crisis_container
-                    )
-
-    # generate SupCon Embeddings
-    gen_supcon_embed = Transformation(
-                        "generate_supcon_embeddings",
-                        site = 'local',
-                        pfn = os.path.join(os.getcwd(), "bin/generate_supcon_embeddings.py"),
-                        is_stageable = True,
-                        container=crisis_container
-                    )
 
     tc.add_containers(crisis_container)
-    tc.add_transformations(gen_supcon_embed, preprocess_tweets, preprocess_images, split_tweets, train_resnet, hpo_train_resnet, train_bilstm, hpo_train_bilstm, resnet_inference, bilstm_inference, late_fusion, main_supcon)
+    tc.add_transformations(preprocess_tweets, preprocess_images, split_tweets, train_resnet, hpo_train_resnet, train_bilstm, hpo_train_bilstm, resnet_inference, bilstm_inference, late_fusion)
     tc.write()
 
-    return gen_supcon_embed, preprocess_tweets, preprocess_images, split_tweets, train_resnet, hpo_train_resnet, train_bilstm, hpo_train_bilstm, resnet_inference, bilstm_inference, late_fusion, main_supcon
+    return  preprocess_tweets, preprocess_images, split_tweets, train_resnet, hpo_train_resnet, train_bilstm, hpo_train_bilstm, resnet_inference, bilstm_inference, late_fusion
 
 
 def split_preprocess_jobs(preprocess_images_job, input_images, prefix):
@@ -265,9 +233,9 @@ def run_workflow(EMBEDDING_BASE_PATH):
 
     image_dataset, all_tweets_path, tweets_file_name = run_pre_workflow()
 
-    input_images, tweets_csv_name, glove_embeddings, resnet_checkpoint_object, hpo_checkpoint_object, supcon_checkpoint_object, supcon_util_obj, resnet_big_obj, losses_obj = replica_catalogue(image_dataset, all_tweets_path, tweets_file_name, EMBEDDING_BASE_PATH)
+    input_images, tweets_csv_name, glove_embeddings, resnet_checkpoint_object, hpo_checkpoint_object = replica_catalogue(image_dataset, all_tweets_path, tweets_file_name, EMBEDDING_BASE_PATH)
 
-    gen_supcon_embed, preprocess_tweets, preprocess_images, split_tweets, train_resnet, hpo_train_resnet, train_bilstm, hpo_train_bilstm, resnet_inference, bilstm_inference, late_fusion, main_supcon = transformation_catalogue()
+    preprocess_tweets, preprocess_images, split_tweets, train_resnet, hpo_train_resnet, train_bilstm, hpo_train_bilstm, resnet_inference, bilstm_inference, late_fusion = transformation_catalogue()
     
     
     wf = Workflow('Crisis_Computing_Workflow')
@@ -375,28 +343,10 @@ def run_workflow(EMBEDDING_BASE_PATH):
                         .add_inputs(resnet_train_output_prob, resnet_test_output_prob, bilstm_train_output_prob, bilstm_test_output_prob)\
                         .add_outputs(confusion_matrix_MPC, confusion_matrix_LR, confusion_matrix_MLP, report_MLP, report_MPC, report_LR)
 
-    # ---------------------------------------------------    EARLY FUSION    ------------------------------------------------------ 
-    
-    #Job 1: Train SupCon Model
-    supcon_final_model = File('supcon_final_model.pth')
-
-    job_train_supcon = Job(main_supcon)\
-                        .add_inputs(*resized_images, supcon_util_obj, resnet_big_obj, losses_obj)\
-                        .add_checkpoint(supcon_checkpoint_object, stage_out=True)\
-                        .add_outputs(supcon_final_model)\
-                        .add_args('--batch_size', SUPCON_BATCH_SIZE, '--epochs', SUPCON_EPOCHS, '--size', SUPCON_RESIZE_IMAGE)\
-                        .add_profiles(Namespace.PEGASUS, key="maxwalltime", value=MAXTIMEWALL)
-
-    #Job 2: Generate SupCon Embeddings
-    supcon_train_embeddings = File('train_supcon_embeddings.csv')
-    supcon_test_embeddings = File('test_supcon_embeddings.csv')
-
-    job_gen_supcon_embed = Job(gen_supcon_embed)\
-                        .add_inputs(*resized_images, supcon_final_model, resnet_big_obj)\
-                        .add_outputs(supcon_train_embeddings, supcon_test_embeddings)
+   
 
 
-    wf.add_jobs(job_gen_supcon_embed, job_preprocess_tweets, job_split_tweets, *job_preprocess_images, job_hpo_train_resnet, job_train_resnet, job_hpo_train_bilstm, job_train_bilstm, job_resnet_inference, job_bilstm_inference, job_late_fusion, job_train_supcon)
+    wf.add_jobs(job_preprocess_tweets, job_split_tweets, *job_preprocess_images, job_hpo_train_resnet, job_train_resnet, job_hpo_train_bilstm, job_train_bilstm, job_resnet_inference, job_bilstm_inference, job_late_fusion)
 
     try:
         wf.plan(submit=True)
@@ -419,9 +369,7 @@ def main():
     global BILSTM_NUM_TRIALS
     global MAXTIMEWALL
     global EMBEDDING_BASE_PATH
-    global SUPCON_BATCH_SIZE
-    global SUPCON_EPOCHS
-    global SUPCON_RESIZE_IMAGE
+
 
 
     parser = argparse.ArgumentParser(description="Crisis Computing Workflow")   
@@ -431,19 +379,14 @@ def main():
     parser.add_argument('--resnet_trials', type=int, default=1, help = "number of ResNet-50 trials") 
     parser.add_argument('--num_workers', type=int, default= 5, help = "number of workers")
     parser.add_argument('--maxwalltime', type=int, default= 30, help = "maxwalltime")
-    parser.add_argument('--supcon_bs', type=int, default= 2, help = "Batch size for SupCon model") # change this default to 16/64/256 depending on gpu
-    parser.add_argument('--supcon_epochs', type=int, default= 1, help = "Epochs for SupCon model") # change to 1000
-    parser.add_argument('--supcon_img_size', type=int, default= 64, help = "Image Size to be fed to SupCon model") # if one gpu then 128 should be the max size
-
+   
     ARGS                = parser.parse_args()
     EMBEDDING_BASE_PATH = ARGS.embedding_path
     BILSTM_NUM_TRIALS   = ARGS.bilstm_trials
     RESNET_NUM_TRIALS   = ARGS.resnet_trials
     NUM_WORKERS         = ARGS.num_workers
     MAXTIMEWALL         = ARGS.maxwalltime
-    SUPCON_BATCH_SIZE   = ARGS.supcon_bs
-    SUPCON_EPOCHS       = ARGS.supcon_epochs
-    SUPCON_RESIZE_IMAGE = ARGS.supcon_img_size
+
 
     # execute pre-workflow tasks
     run_pre_workflow()
