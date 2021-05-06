@@ -8,7 +8,7 @@ import logging
 import argparse
 import time
 
-from bin.utils import get_images, add_labels, get_data_splits, get_tweets
+from bin.utils import get_images, add_labels, get_ids, get_image_splits, get_tweets, split_tweets
 
 logging.basicConfig(level=logging.DEBUG)
 props = Properties()
@@ -31,23 +31,33 @@ def run_pre_workflow():
 
     returns paths to each image in the dataset, path to the tweets csv file, and its filename.
     """
+    
+    
     # retrieves images with their paths
     informative, non_informative = get_images()
 
     # appends labels _0 and _1 as per the class
-    add_labels(informative, 'informative')
-    add_labels(non_informative, 'non_informative')
-
-    # splits data into train, validation and test
-    image_dataset = get_data_splits()
-
+    labelled_informative = add_labels(informative, 'informative')
+    labelled_non_informative = add_labels(non_informative, 'non_informative')
+    
+    total_images = labelled_informative + labelled_non_informative
+    
+    # get unique image ids and their corresponding names
+    unique_ids, id_to_image_dict = get_ids(total_images)
+    
     # returns path to the csv containing all tweets and its name
-    all_tweets_path, tweets_file_name = get_tweets()
+    all_tweets_path = get_tweets(unique_ids)
+    
+    #split tweets into train val and test
+    train_tweets_path, val_tweets_path, test_tweets_path  = split_tweets(all_tweets_path)
+    
+    # add prefix train, val , test to image file name
+    image_dataset = get_image_splits(train_tweets_path, val_tweets_path, test_tweets_path, id_to_image_dict)
+    
+    return train_tweets_path, val_tweets_path, test_tweets_path, image_dataset
 
-    return image_dataset, all_tweets_path, tweets_file_name
 
-
-def replica_catalogue(dataset, all_tweets_path, tweets_file_name, EMBEDDING_BASE_PATH):
+def replica_catalogue(train_tweets_path, val_tweets_path, test_tweets_path, dataset_images, EMBEDDING_BASE_PATH):
 
     """
     Function to add paths of dataset to the replica catalogue. 
@@ -58,12 +68,6 @@ def replica_catalogue(dataset, all_tweets_path, tweets_file_name, EMBEDDING_BASE
     """
     rc = ReplicaCatalog()
 
-    # list of entire dataset
-    dataset_images = []
-    dataset_images.extend(dataset['train'])
-    dataset_images.extend(dataset['val'])
-    dataset_images.extend(dataset['test'])
-
     # list of input file objects
     input_images = []
 
@@ -73,7 +77,6 @@ def replica_catalogue(dataset, all_tweets_path, tweets_file_name, EMBEDDING_BASE
         input_images.append(image_file)
         rc.add_replica("local", image_file,  image_path)
 
-    tweets_csv_name = File(tweets_file_name)
     glove_embeddings = File('glove.twitter.27B.200d.txt')
     
 
@@ -91,12 +94,18 @@ def replica_catalogue(dataset, all_tweets_path, tweets_file_name, EMBEDDING_BASE
     losses_obj = File('losses.py')
     rc.add_replica("local", losses_obj, os.path.join(os.getcwd(), "bin/losses.py"))
 
+    train_tweets_name = File(train_tweets_path.split('/')[-1])
+    val_tweets_name = File(val_tweets_path.split('/')[-1])
+    test_tweets_name = File(test_tweets_path.split('/')[-1])
+    
+    rc.add_replica("local", train_tweets_name, train_tweets_path)
+    rc.add_replica("local", val_tweets_name, val_tweets_path)
+    rc.add_replica("local", test_tweets_name, test_tweets_path)
 
-    rc.add_replica("local", tweets_csv_name, all_tweets_path)
     rc.add_replica("local", glove_embeddings, os.path.join(os.getcwd(), os.path.join(EMBEDDING_BASE_PATH, GLOVE_EMBEDDING_FILE)))            
     rc.write()
 
-    return input_images, tweets_csv_name, glove_embeddings, supcon_checkpoint_object, supcon_util_obj, resnet_big_obj, losses_obj
+    return input_images, train_tweets_name, val_tweets_name, test_tweets_name, glove_embeddings, supcon_checkpoint_object, supcon_util_obj, resnet_big_obj, losses_obj
 
 
 
@@ -196,33 +205,33 @@ def plot_workflow_graph(wf):
 
 def run_workflow(EMBEDDING_BASE_PATH):
 
-    image_dataset, all_tweets_path, tweets_file_name = run_pre_workflow()
+    train_tweets_path, val_tweets_path, test_tweets_path, image_dataset = run_pre_workflow()
 
-    input_images, tweets_csv_name, glove_embeddings,  supcon_checkpoint_object, supcon_util_obj, resnet_big_obj, losses_obj = replica_catalogue(image_dataset, all_tweets_path, tweets_file_name, EMBEDDING_BASE_PATH)
+    input_images, train_tweets, val_tweets, test_tweets, glove_embeddings, supcon_checkpoint_object, supcon_util_obj, resnet_big_obj, losses_obj = replica_catalogue(train_tweets_path, val_tweets_path, test_tweets_path, image_dataset, EMBEDDING_BASE_PATH)
 
     gen_supcon_embed, preprocess_tweets, preprocess_images, split_tweets,main_supcon = transformation_catalogue()
-    
     
     wf = Workflow('Crisis_Computing_Workflow')
 
     # ---------------------------------------------------    TEXT PIPELINE     ------------------------------------------------------ 
 
     # Job 1: Preprocess tweets
-    preprocessed_tweets = File('preprocessed_tweets.csv')
-
-    job_preprocess_tweets = Job(preprocess_tweets)\
-                            .add_inputs(tweets_csv_name)\
-                            .add_outputs(preprocessed_tweets)
-
-    # Job 2: Split tweets
-    train_tweets = File('train_tweets.csv')
-    val_tweets = File('val_tweets.csv')
-    test_tweets = File('test_tweets.csv')
-
-    job_split_tweets = Job(split_tweets)\
-                        .add_inputs(preprocessed_tweets, *input_images)\
-                        .add_outputs(train_tweets, val_tweets, test_tweets)
-
+    preprocessed_train_tweets = File('preprocessed_train_tweets.csv')
+    preprocessed_val_tweets = File('preprocessed_val_tweets.csv')
+    preprocessed_test_tweets = File('preprocessed_test_tweets.csv')
+    
+    job_preprocess_tweets = [Job(preprocess_tweets) for i in range(3)]
+    job_preprocess_tweets[0].add_inputs(train_tweets)
+    job_preprocess_tweets[0].add_outputs(preprocessed_train_tweets)
+    job_preprocess_tweets[0].add_args('--filename', 'train_tweets.csv')
+        
+    job_preprocess_tweets[1].add_inputs(val_tweets)
+    job_preprocess_tweets[1].add_outputs(preprocessed_val_tweets)
+    job_preprocess_tweets[1].add_args('--filename', 'val_tweets.csv')
+    
+    job_preprocess_tweets[2].add_inputs(test_tweets)
+    job_preprocess_tweets[2].add_outputs(preprocessed_test_tweets)
+    job_preprocess_tweets[2].add_args('--filename', 'test_tweets.csv')
 
 
     # ---------------------------------------------------    IMAGE PIPELINE     ------------------------------------------------------ 
@@ -254,7 +263,7 @@ def run_workflow(EMBEDDING_BASE_PATH):
                         .add_outputs(supcon_train_embeddings, supcon_test_embeddings)
 
 
-    wf.add_jobs(job_gen_supcon_embed, job_preprocess_tweets, job_split_tweets, *job_preprocess_images, job_train_supcon)
+    wf.add_jobs(job_gen_supcon_embed, *job_preprocess_tweets, *job_preprocess_images, job_train_supcon)
 
     try:
         wf.plan(submit=True)
