@@ -1,7 +1,5 @@
-import glob 
+
 import os
-import cv2
-import numpy as np
 from Pegasus.api import *
 from pathlib import Path
 import logging
