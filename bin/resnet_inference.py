@@ -28,7 +28,7 @@ EPOCHS = 1
 CHECKPOINT = 'resnet_final_model.pth'
 OUT_FILE_TRAIN = 'resnet_train_output.csv'
 OUT_FILE_TEST = 'resnet_test_output.csv'
-CACHE = {}
+
 
 PATH = ""
 #--------------------------------------------------------------------------------------------------------------------------
@@ -82,18 +82,15 @@ def run_inference(model, data, dtype):
     
     with torch.no_grad():  
         for image_id, image, label in data:
-            if str(image_id) in CACHE.keys():
-                continue
-            CACHE[str(image_id)] = 1
+            print(image_id)
             image = image.to(DEVICE)
             label = label.type(torch.float).to(DEVICE)
-            
             _, output_prob = model(image)
             predicted = torch.round(output_prob).squeeze(-1)
             actual.append(label.cpu().item())
             preds.append(predicted.cpu().item())
                
-            csv_ob.writerow([image_id.cpu().item() ,output_prob.cpu().item(), int(predicted.cpu().item()), int(label.cpu().item())])
+            csv_ob.writerow([image_id[0] ,output_prob.cpu().item(), int(predicted.cpu().item()), int(label.cpu().item())])
     
     if dtype == 'test':
         plot_confusion_matrix(actual, preds)
@@ -145,12 +142,13 @@ class DatasetLoader(Dataset):
         image = Image.open(self.data[idx]).convert('RGB')
  
         label = int(re.findall(r'[0-9]+', self.data[idx])[-1])
-        image_id = int(re.findall(r'[0-9]+', self.data[idx])[0])
-                    
+        image_id = (re.findall(r'[0-9]+', self.data[idx]))
+        img_id = image_id[0]+ '_' + image_id[1]
+
         if self.transform:
             image = self.transform(image)
 
-        return image_id, image, label
+        return img_id, image, label
 
 
 #--------------------------------------------------------------------------------------------------------------------------
@@ -194,7 +192,10 @@ if __name__ == "__main__":
     test_transform  = transforms_test()
     train_data = get_dataloader('train', test_transform)
     test_data = get_dataloader('test', test_transform)
+
     model = Resnet().to(DEVICE)
     model.state_dict(torch.load(CHECKPOINT))
+  
     run_inference(model, test_data, 'test')
+
     run_inference(model, train_data, 'train')

@@ -124,7 +124,7 @@ def train_loop(model, t_dataset, v_dataset, criterion, optimizer):
     epoch_t_loss = 0
     epoch_v_loss = 0
     model.train()
-    
+  
     for ind, (image, label) in enumerate(t_dataset):
         
         image = image.to(DEVICE)
@@ -133,7 +133,7 @@ def train_loop(model, t_dataset, v_dataset, criterion, optimizer):
         optimizer.zero_grad()
 
         _, output = model(image)
-
+      
         loss = criterion(output, label.unsqueeze(1))
         epoch_t_loss += loss.item()
         predicted = torch.round(output).squeeze(-1) 
@@ -146,18 +146,19 @@ def train_loop(model, t_dataset, v_dataset, criterion, optimizer):
     epoch_t_accuracy = 100*correct/total
     epoch_t_loss = epoch_t_loss/len(t_dataset)
     
-    total = 0
+    total = 1
     correct = 0
-    
+  
     model.eval()
     with torch.no_grad():
+    
         for ind, (image, label) in enumerate(v_dataset):
             image = image.to(DEVICE)
             label = label.type(torch.float).to(DEVICE)
 
 
             _, output = model(image)
-
+      
             loss = criterion(output, label.unsqueeze(1))
             epoch_v_loss += loss.item()
             predicted = torch.round(output).squeeze(-1) 
@@ -167,7 +168,7 @@ def train_loop(model, t_dataset, v_dataset, criterion, optimizer):
 
     epoch_v_accuracy = 100*correct/total
     epoch_v_loss = epoch_v_loss/len(v_dataset)
-    
+   
     return epoch_t_loss, epoch_t_accuracy, epoch_v_loss, epoch_v_accuracy
 
 
@@ -305,7 +306,10 @@ def get_dataloader(data_type, transformation):
     
     data = DatasetLoader(dataset, transformation)
 
-    dataset_loader = torch.utils.data.DataLoader(data, batch_size = BATCH_SIZE, shuffle=True, num_workers=4)
+    if data_type == 'val':
+        dataset_loader = torch.utils.data.DataLoader(data, batch_size = BATCH_SIZE, shuffle=True, num_workers=1, drop_last = False)
+    else:
+        dataset_loader = torch.utils.data.DataLoader(data, batch_size = BATCH_SIZE, shuffle=True, num_workers=1, drop_last = True)
 
     return dataset_loader
 

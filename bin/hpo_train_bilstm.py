@@ -169,9 +169,9 @@ def objective(trial):
     print("Performing trial {}".format(trial.number))
     global max_features
     
-    train_df = pd.read_csv(DATA_PATH +'train_tweets.csv')
-    valid_df = pd.read_csv(DATA_PATH +'val_tweets.csv')
-    test_df  = pd.read_csv(DATA_PATH + 'test_tweets.csv')
+    train_df = pd.read_csv(DATA_PATH +'preprocessed_train_tweets.csv')
+    valid_df = pd.read_csv(DATA_PATH +'preprocessed_val_tweets.csv')
+    test_df  = pd.read_csv(DATA_PATH + 'preprocessed_test_tweets.csv')
     
     LR = trial.suggest_categorical("LR", [1e-3, 1e-4, 1e-5])
     dropout_val = trial.suggest_categorical("dropout_val", [0.1, 0.2, 0.4])
@@ -250,7 +250,7 @@ def main():
     
     TRIALS = args.trials
     load_study()
-    
+    print("Done with the program!!")
     return
 
 if __name__ == "__main__":

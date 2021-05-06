@@ -47,8 +47,8 @@ def Logistic_Regression_policy(train_data, test_data):
     """
     Logistic Regression Decision policy for late fusion
     """
-
-    clf = LogisticRegression(random_state=0, solver='newton-cg').fit(train_data[["image_prob", "text_prob"]], list(train_data["actual_class"]) )
+    
+    clf = LogisticRegression(random_state=0, solver='newton-cg').fit(train_data[["image_prob", 'text_prob']], list(train_data["actual_class"]) )
     predictions = clf.predict(test_data[["image_prob","text_prob"]])
     correct = (predictions == test_data['actual_class']).sum()
   
@@ -98,8 +98,8 @@ def create_dataloaders(train_data, test_data):
     train_loader = Dataloader(train_data.astype('float32'))
     test_loader = Dataloader(test_data.astype('float32'))
 
-    train_loader = torch.utils.data.DataLoader(train_loader, shuffle=True, batch_size=BATCH_SIZE, num_workers=4)
-    test_loader = torch.utils.data.DataLoader(test_loader, shuffle=True, batch_size=len(test_loader), num_workers=4)
+    train_loader = torch.utils.data.DataLoader(train_loader, shuffle=True, batch_size=BATCH_SIZE, num_workers=2, drop_last = True)
+    test_loader = torch.utils.data.DataLoader(test_loader, shuffle=True, batch_size=len(test_loader), num_workers=2)
 
     return train_loader, test_loader
 
@@ -157,15 +157,20 @@ def generate_data(img_data, text_data):
     """
     print("Length of image data: ",len(img_data))
     print("Length of text data: ",len(text_data))
-    
+
+
     data = pd.DataFrame(columns=["image_prob", "text_prob", 'actual_class'])
     img_data['image_id'] = img_data.image_id.astype(str)
     text_data['tweet_id'] = text_data.tweet_id.astype(str)
-   
+    
     for ind, image_row in img_data.iterrows():
-        text_row = text_data.loc[text_data['tweet_id']==image_row['image_id']]
-        prob = pd.Series([image_row['predicted_score'], text_row['predicted_score'].values, image_row['actual_class']], index=data.columns)
+        img_id = image_row['image_id'].split('_')[0]
+        text_row = text_data.loc[text_data['tweet_id']==img_id]
+        
+        prob = pd.Series([image_row['predicted_score'], text_row['predicted_score'].values[0], image_row['actual_class']], index=data.columns)
         data = data.append(prob, ignore_index=True)
+    
+    print("Length of combined train text: ",len(data))
 
     return data
     
@@ -209,16 +214,17 @@ if __name__ == '__main__':
     image_test = pd.read_csv(PATH_IMAGE_TEST)
     text_train = pd.read_csv(PATH_TEXT_TRAIN)
     text_test = pd.read_csv(PATH_TEXT_TEST)
-
+  
+    
     train_data = generate_data(image_train, text_train)       
     test_data = generate_data(image_test, text_test)
-    
+  
     # call to Mean probability Concatenation decision policy
     fusion_output = mean_prob_concatenation(test_data)
-    
+
     # call to Logistic Regression decision policy
     LR_actual, LR_predicted = Logistic_Regression_policy(train_data, test_data)
-    
+  
     # call to MLP Decision Policy
     learning_rate = 0.01
     epochs = 10
@@ -230,8 +236,8 @@ if __name__ == '__main__':
     trained_model = train_model(epochs, criterion, optimizer, mlp, train_loader)
     MLP_actual, MLP_predicted = test(trained_model, test_loader)
 
-
     # call to confusion matrix and report plot function
     plot_confusion_matrix(list(test_data['actual_class']), list(fusion_output), 'Mean Probability Concatenation', confusion_matrix_MPC, report_MPC)
     plot_confusion_matrix(LR_actual, LR_predicted, "Logistic Regression Decision Policy", confusion_matrix_LR, report_LR)
     plot_confusion_matrix(MLP_actual, MLP_predicted, "MLP Decision Policy", confusion_matrix_MLP, report_MLP)
+    

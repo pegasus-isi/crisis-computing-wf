@@ -30,17 +30,15 @@ def rename_images(images, label):
     
     """
     if label == 'informative':
-        prefix = '_0'
-    else:
         prefix = '_1'
+    else:
+        prefix = '_0'
 
     for image in images:
         name = image.split('/')[-1]
         path = '/'.join(image.split('/')[:-1])
         new_name = os.path.join(path, (name[:-4]+prefix+name[-4:]))
-        print(image)
-        print(new_name)
-#         os.rename(image, new_name)
+        os.rename(image, new_name)
     
     return
 

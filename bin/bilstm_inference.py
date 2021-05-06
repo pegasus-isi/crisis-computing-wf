@@ -104,9 +104,9 @@ def generate_csv(dtype, predicted_score, predicted_class, actual_class, tweet_id
     
 if __name__ == '__main__':
     
-    train_df = pd.read_csv(DATA_PATH +'train_tweets.csv')
-    valid_df = pd.read_csv(DATA_PATH +'val_tweets.csv')
-    test_df  = pd.read_csv(DATA_PATH + 'test_tweets.csv')
+    train_df = pd.read_csv(DATA_PATH +'preprocessed_train_tweets.csv')
+    valid_df = pd.read_csv(DATA_PATH +'preprocessed_val_tweets.csv')
+    test_df  = pd.read_csv(DATA_PATH + 'preprocessed_test_tweets.csv')
     
     final_train_df = pd.concat([train_df, valid_df]) 
    
@@ -120,6 +120,6 @@ if __name__ == '__main__':
     
     train_pred, train_output_class, Y_train_f = evaluate('train', X_train, Y_train, model)
     generate_csv('train', train_pred, train_output_class, Y_train_f, X_train_id)
-    
+
     
 
