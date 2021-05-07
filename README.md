@@ -110,4 +110,4 @@ Outputs: confusion_matrix_MPC.png, confusion_matrix_LR.png, confusion_matrix_MLP
 
 <h3>Workflow Diagram </h3>
 
-![workflow](/Final_crisis_wf.png)
+![workflow](/Crisis-Computing-Diagram.png)
