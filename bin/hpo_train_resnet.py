@@ -16,7 +16,7 @@ import argparse
 os.environ['MPLCONFIGDIR'] = '/tmp'
 # Constant variables
 
-DEVICE = ("cuda" if torch.cuda.is_available() else "cpu")
+DEVICE = "cpu" # ("cuda" if torch.cuda.is_available() else "cpu")
 MEAN = 0.4905, 0.4729, 0.4560 
 STD = 0.2503, 0.2425, 0.2452
 BATCH_SIZE = 2
@@ -307,7 +307,8 @@ def get_dataloader(data_type, transformation):
     data = DatasetLoader(dataset, transformation)
 
     if data_type == 'val':
-        dataset_loader = torch.utils.data.DataLoader(data, batch_size = BATCH_SIZE, shuffle=True, num_workers=1, drop_last = False)
+        
+        dataset_loader = torch.utils.data.DataLoader(data, batch_size = 1, shuffle=True, num_workers=1, drop_last = False)
     else:
         dataset_loader = torch.utils.data.DataLoader(data, batch_size = BATCH_SIZE, shuffle=True, num_workers=1, drop_last = True)
 
@@ -393,7 +394,6 @@ def main():
     
     TRIALS = args.trials
     load_study()
-    
     return
 
 if __name__ == "__main__":

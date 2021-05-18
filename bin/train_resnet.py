@@ -14,7 +14,7 @@ import os
 os.environ['MPLCONFIGDIR'] = '/tmp'
 # Constant variables
 
-DEVICE = ("cuda" if torch.cuda.is_available() else "cpu")
+DEVICE = "cpu" #("cuda" if torch.cuda.is_available() else "cpu")
 MEAN = 0.4905, 0.4729, 0.4560 
 STD = 0.2503, 0.2425, 0.2452
 BATCH_SIZE = 2
