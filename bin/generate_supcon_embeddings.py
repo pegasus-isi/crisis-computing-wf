@@ -19,8 +19,8 @@ from resnet_big import SupConResNet
 DEVICE = ("cuda" if torch.cuda.is_available() else "cpu")
 MEAN = 0.4905, 0.4729, 0.4560 
 STD = 0.2503, 0.2425, 0.2452
-OUT_FILE_TRAIN = 'train_supcon_embeddings.csv'
-OUT_FILE_TEST = 'test_supcon_embeddings.csv'
+OUT_FILE_TRAIN = 'supcon_train_embeddings.csv'
+OUT_FILE_TEST = 'supcon_test_embeddings.csv'
 CHECKPOINT = 'supcon_final_model.pth'
 BATCH_SIZE = 1
 CACHE = {}
@@ -113,9 +113,11 @@ def generate_embeddings(model, data_loader, dtype):
             image = image.to(DEVICE)
             label = label.type(torch.float).to(DEVICE)
             
-            features = model(image)
+            features = model(image).squeeze(0)
             
-            csv_ob.writerow([image_id.cpu().item(), features[0].cpu().tolist(), label.cpu().item()])
+            feat = features.cpu().tolist()
+            
+            csv_ob.writerow([image_id.cpu().item(), feat, label.cpu().item()])
 
     return 
 
