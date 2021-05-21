@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import numpy as np
-import torch
+import torch, os
 import re
 import glob
 import sys
@@ -15,6 +15,7 @@ import re
 import itertools
 from sklearn.metrics import confusion_matrix
 from resnet_big import SupConResNet
+os.environ['MPLCONFIGDIR'] = '/tmp'
 
 DEVICE = ("cuda" if torch.cuda.is_available() else "cpu")
 MEAN = 0.4905, 0.4729, 0.4560 

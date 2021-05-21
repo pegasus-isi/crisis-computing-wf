@@ -15,5 +15,6 @@ RUN pip install tensorflow
 RUN pip install keras
 RUN pip install seaborn
 RUN pip install tensorboard_logger
+RUN pip install transformers
 RUN mkdir ./bin
 

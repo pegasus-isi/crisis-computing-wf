@@ -141,14 +141,6 @@ def transformation_catalogue():
                             container=crisis_container
                         )
 
-    split_tweets = Transformation(
-                        "split_tweets",
-                        site = 'local',
-                        pfn = os.path.join(os.getcwd(), "bin/split_tweets.py"),
-                        is_stageable = True,
-                        container=crisis_container
-                    )
-
     # train SupCon
     main_supcon = Transformation(
                         "main_supcon",
@@ -167,11 +159,38 @@ def transformation_catalogue():
                         container=crisis_container
                     )
 
+    # train BERT
+    train_bert = Transformation(
+                        "train_bert",
+                        site = 'local',
+                        pfn = os.path.join(os.getcwd(), "bin/train_bert.py"),
+                        is_stageable = True,
+                        container=crisis_container
+                    )
+
+    # generate BERT embeddings
+    gen_bert_embed = Transformation(
+                        "generate_bert_embeddings",
+                        site = 'local',
+                        pfn = os.path.join(os.getcwd(), "bin/generate_bert_embeddings.py"),
+                        is_stageable = True,
+                        container=crisis_container
+                    )
+
+    # early fusion
+    early_fusion = Transformation(
+                        "early_fusion",
+                        site = 'local',
+                        pfn = os.path.join(os.getcwd(), "bin/early_fusion.py"),
+                        is_stageable = True,
+                        container=crisis_container
+                    )
+
     tc.add_containers(crisis_container)
-    tc.add_transformations(gen_supcon_embed, preprocess_tweets, preprocess_images, split_tweets, main_supcon)
+    tc.add_transformations(gen_supcon_embed, preprocess_tweets, preprocess_images, main_supcon, train_bert, gen_bert_embed, early_fusion)
     tc.write()
 
-    return gen_supcon_embed, preprocess_tweets, preprocess_images, split_tweets, main_supcon
+    return gen_supcon_embed, preprocess_tweets, preprocess_images, main_supcon, train_bert, gen_bert_embed, early_fusion
 
 
 def split_preprocess_jobs(preprocess_images_job, input_images, prefix):
@@ -209,7 +228,7 @@ def run_workflow(EMBEDDING_BASE_PATH):
 
     input_images, train_tweets, val_tweets, test_tweets, glove_embeddings, supcon_checkpoint_object, supcon_util_obj, resnet_big_obj, losses_obj = replica_catalogue(train_tweets_path, val_tweets_path, test_tweets_path, image_dataset, EMBEDDING_BASE_PATH)
 
-    gen_supcon_embed, preprocess_tweets, preprocess_images, split_tweets,main_supcon = transformation_catalogue()
+    gen_supcon_embed, preprocess_tweets, preprocess_images, main_supcon, train_bert, gen_bert_embed, early_fusion = transformation_catalogue()
     
     wf = Workflow('Crisis_Computing_Workflow')
 
@@ -233,6 +252,22 @@ def run_workflow(EMBEDDING_BASE_PATH):
     job_preprocess_tweets[2].add_outputs(preprocessed_test_tweets)
     job_preprocess_tweets[2].add_args('--filename', 'test_tweets.csv')
 
+    #Job 2: Train BERT Model
+    bert_final_model = File('bert_final_model.pth')
+
+    job_train_bert = Job(train_bert)\
+                        .add_inputs(preprocessed_train_tweets, preprocessed_val_tweets, preprocessed_test_tweets)\
+                        .add_outputs(bert_final_model)\
+                        .add_args('--batch_size', BERT_BATCH_SIZE, '--epochs', BERT_EPOCHS)\
+                        .add_profiles(Namespace.PEGASUS, key="maxwalltime", value=MAXTIMEWALL)
+
+    #Job 3: Generate BERT Embeddings
+    bert_train_embeddings = File('bert_train_embeddings.csv')
+    bert_test_embeddings = File('bert_test_embeddings.csv')
+
+    job_gen_bert_embed = Job(gen_bert_embed)\
+                        .add_inputs(preprocessed_train_tweets, preprocessed_val_tweets, preprocessed_test_tweets, bert_final_model)\
+                        .add_outputs(bert_train_embeddings, bert_test_embeddings)
 
     # ---------------------------------------------------    IMAGE PIPELINE     ------------------------------------------------------ 
 
@@ -241,10 +276,7 @@ def run_workflow(EMBEDDING_BASE_PATH):
     job_preprocess_images = [Job(preprocess_images) for i in range(NUM_WORKERS)]
     resized_images = split_preprocess_jobs(job_preprocess_images, input_images, prefix)
 
-
-    # ---------------------------------------------------    EARLY FUSION    ------------------------------------------------------ 
-    
-    #Job 1: Train SupCon Model
+    #Job 2: Train SupCon Model
     supcon_final_model = File('supcon_final_model.pth')
 
     job_train_supcon = Job(main_supcon)\
@@ -254,16 +286,26 @@ def run_workflow(EMBEDDING_BASE_PATH):
                         .add_args('--batch_size', SUPCON_BATCH_SIZE, '--epochs', SUPCON_EPOCHS, '--size', SUPCON_RESIZE_IMAGE)\
                         .add_profiles(Namespace.PEGASUS, key="maxwalltime", value=MAXTIMEWALL)
 
-    #Job 2: Generate SupCon Embeddings
-    supcon_train_embeddings = File('train_supcon_embeddings.csv')
-    supcon_test_embeddings = File('test_supcon_embeddings.csv')
+    #Job 3: Generate SupCon Embeddings
+    supcon_train_embeddings = File('supcon_train_embeddings.csv')
+    supcon_test_embeddings = File('supcon_test_embeddings.csv')
 
     job_gen_supcon_embed = Job(gen_supcon_embed)\
                         .add_inputs(*resized_images, supcon_final_model, resnet_big_obj)\
                         .add_outputs(supcon_train_embeddings, supcon_test_embeddings)
 
 
-    wf.add_jobs(job_gen_supcon_embed, *job_preprocess_tweets, *job_preprocess_images, job_train_supcon)
+    # ---------------------------------------------------    EARLY FUSION    ------------------------------------------------------ 
+    
+    confusion_matrix_EF = File('early_fusion_MLP.png')
+    report_EF = File('early_fusion_MLP.csv')
+
+    job_early_fusion = Job(early_fusion)\
+                        .add_inputs(supcon_train_embeddings, supcon_test_embeddings, bert_train_embeddings, bert_test_embeddings)\
+                        .add_outputs(confusion_matrix_EF, report_EF)
+
+
+    wf.add_jobs(job_gen_supcon_embed, *job_preprocess_tweets, *job_preprocess_images, job_train_supcon, job_train_bert, job_gen_bert_embed, job_early_fusion)
 
     try:
         wf.plan(submit=True)
@@ -287,7 +329,8 @@ def main():
     global SUPCON_BATCH_SIZE
     global SUPCON_EPOCHS
     global SUPCON_RESIZE_IMAGE
-
+    global BERT_BATCH_SIZE
+    global BERT_EPOCHS
 
     parser = argparse.ArgumentParser(description="Crisis Computing Workflow")   
 
@@ -297,7 +340,9 @@ def main():
     parser.add_argument('--supcon_bs', type=int, default= 2, help = "Batch size for SupCon model") # change this default to 16/64/256 depending on gpu
     parser.add_argument('--supcon_epochs', type=int, default= 1, help = "Epochs for SupCon model") # change to 1000
     parser.add_argument('--supcon_img_size', type=int, default= 64, help = "Image Size to be fed to SupCon model") # if one gpu then 128 should be the max size
-
+    parser.add_argument('--bert_bs', type=int, default= 2, help = "Batch size for BERT model") 
+    parser.add_argument('--bert_epochs', type=int, default= 4, help = "Epochs for BERT model") 
+    
     ARGS                = parser.parse_args()
     EMBEDDING_BASE_PATH = ARGS.embedding_path
     NUM_WORKERS         = ARGS.num_workers
@@ -305,9 +350,8 @@ def main():
     SUPCON_BATCH_SIZE   = ARGS.supcon_bs
     SUPCON_EPOCHS       = ARGS.supcon_epochs
     SUPCON_RESIZE_IMAGE = ARGS.supcon_img_size
-
-    # execute pre-workflow tasks
-    run_pre_workflow()
+    BERT_BATCH_SIZE     = ARGS.bert_bs
+    BERT_EPOCHS         = ARGS.bert_epochs
 
     # run the workflow
     run_workflow(EMBEDDING_BASE_PATH)

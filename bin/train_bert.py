@@ -1,25 +1,26 @@
 #!/usr/bin/env python3
 
 import torch, os
+import numpy as np
 import pandas as pd
+import re, time
 from sklearn.metrics import accuracy_score
+import torch.nn as nn
 from transformers import BertForSequenceClassification, AdamW, BertConfig
 from transformers import DistilBertTokenizerFast
-from torch.utils.data import TensorDataset
-from torch.utils.data import DataLoader, SequentialSampler
+from torch.utils.data import TensorDataset, random_split
+from torch.utils.data import DataLoader, RandomSampler, SequentialSampler
 from transformers import BertForSequenceClassification, AdamW, BertConfig
-
+from transformers import get_linear_schedule_with_warmup
 
 os.environ['MPLCONFIGDIR'] = '/tmp'
 os.environ['TRANSFORMERS_CACHE'] = '/tmp'
+
 DATA_PATH = ""
-BATCH_SIZE = 1
-DEVICE = "cpu"#("cuda" if torch.cuda.is_available() else "cpu")
-
-MODEL_CHECKPOINT = 'bert_final_model.pth'
-TRAIN_EMBEDDINGS = 'bert_train_embeddings.csv'
-TEST_EMBEDDINGS = 'bert_test_embeddings.csv'
-
+BATCH_SIZE = 2
+EPOCHS = 4
+DEVICE = ("cuda" if torch.cuda.is_available() else "cpu")
+MODEL_CKPT = 'bert_final_model.pth'
 
 def get_data():
     """
@@ -33,20 +34,13 @@ def get_data():
     X_train = train_df['tweet_text']
     Y_train = train_df['text_info']
 
-    id_train = train_df['tweet_id']
-    id_val = valid_df['tweet_id']
-    id_test = test_df['tweet_id']
-    
     X_valid = valid_df['tweet_text']
     Y_valid = valid_df['text_info']
 
     X_test = test_df['tweet_text']
     Y_test = test_df['text_info']
 
-    train_ids = list(id_train.values) + list(id_val.values)
-    test_ids = list(id_test.values)
-
-    return train_ids, test_ids, X_train, X_valid, X_test, Y_train, Y_valid, Y_test
+    return X_train, X_valid, X_test, Y_train, Y_valid, Y_test
 
 
 def tokenize_and_map_ID(all_tweets):
@@ -90,8 +84,9 @@ def get_train_loader(input_ids, attention_masks, labels):
     train_dataset = TensorDataset(input_ids, attention_masks, labels)
     train_dataloader = DataLoader(
                 train_dataset, 
-                sampler = SequentialSampler(train_dataset), 
+                sampler = RandomSampler(train_dataset), 
                 batch_size = BATCH_SIZE,
+                drop_last = True
             )
     
     return train_dataloader
@@ -111,57 +106,112 @@ def get_test_loader(input_ids, attention_masks, labels):
     
     return test_dataloader
 
-def get_embeddings(dataloader, model):
-    """
-    returns tweet embeddings.
-    :params: dataloader = train/test dataset
-             model = trained model
-    """
-    embed = []
-    true_label = []
-    model.eval()
-    with torch.no_grad(): 
 
-        for batch in dataloader:
-            
+def train_model(train_dataloader, test_dataloader):
+    """
+    returns trained BERT model, losses for train and test and accuracies
+    :params: train_dataloader, test_dataloader = train and test dataset loaders
+    """
+
+    model = BertForSequenceClassification.from_pretrained(
+        'distilbert-base-uncased', 
+        num_labels = 2,
+        output_attentions = True,
+        output_hidden_states = True, 
+        cache_dir="/tmp"
+    )
+
+    model.to(DEVICE)
+
+    optimizer = AdamW(model.parameters(), lr = 2e-5, eps = 1e-8)
+
+    total_steps = len(train_dataloader) * EPOCHS
+
+    scheduler = get_linear_schedule_with_warmup(optimizer, num_warmup_steps = 0, num_training_steps = total_steps)
+
+    pos_weight = torch.tensor([1.48, 0.75]).to(DEVICE)
+    criterion = torch.nn.BCEWithLogitsLoss(pos_weight=pos_weight)
+    softmax_layer = nn.Softmax(dim=1)
+    
+    for epoch in range(EPOCHS):
+
+        print("\nRunning Epoch: {}".format(epoch+1))
+        start = time.time()
+        total_train_loss = 0
+        total_test_accuracy = 0
+        total_test_loss = 0
+
+        model.train()
+        for batch in train_dataloader:
+
             # `batch` contains three pytorch tensors: [0]: input ids ,  [1]: attention masks, [2]: labels
             b_input_ids = batch[0].to(DEVICE)
             b_input_mask = batch[1].to(DEVICE)
             b_labels = batch[2].to(DEVICE)
-            true_label.extend(b_labels.cpu().tolist())
+  
+            model.zero_grad()        
+
             logits = model(b_input_ids, token_type_ids=None, attention_mask=b_input_mask)
-            hidden_states = logits[2]
-            hidden_states = hidden_states[0]
-            hidden_states = hidden_states.permute(1,0,2,3)
 
-            token_vecs = hidden_states[-2]
+            b_labels = torch.nn.functional.one_hot(b_labels, num_classes=2).type_as(logits[0]).to(DEVICE)
+            
+            loss = criterion(logits[0], b_labels)
 
-            sentence_embedding = torch.mean(token_vecs, dim=1)
+            total_train_loss += loss.item()
 
-            embed.extend(sentence_embedding.cpu().tolist())
+            loss.backward()
 
-    return embed, true_label
+            torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+            optimizer.step()
+            scheduler.step()
 
-def generate_csv(ids, embeds, labels, fname):
-    """
-    generates csv containing tweet id, tweet embeddings and tweet labels.
-    """
-    data_csv = pd.DataFrame()
-    data_csv['tweet_id'] = ids
-    data_csv['embedding'] = embeds
-    data_csv['actual_class'] = labels
+        avg_train_loss = total_train_loss / len(train_dataloader)            
 
-    data_csv.to_csv(fname, index=False)
+        model.eval()
+        with torch.no_grad():
 
-    return
+            for batch in test_dataloader:
+
+                b_input_ids = batch[0].to(DEVICE)
+                b_input_mask = batch[1].to(DEVICE)
+                b_labels = batch[2].to(DEVICE)
+                
+                logits = model(b_input_ids, token_type_ids=None, attention_mask=b_input_mask)
+                
+                b1_labels =torch.nn.functional.one_hot(b_labels, num_classes=2).type_as(logits[0]).to(DEVICE)
+                loss = criterion(logits[0], b1_labels)
+
+                total_test_loss += loss.item()
+                output = softmax_layer(logits[0])
+            
+                label_ids = b_labels.to('cpu').numpy()
+                y_pred = torch.argmax(output, dim=1).cpu().numpy()
+                acc = accuracy_score(label_ids, y_pred)
+
+                total_test_accuracy += acc
+
+        avg_test_accuracy = total_test_accuracy / len(test_dataloader)
+        avg_test_loss = total_test_loss / len(test_dataloader)
+        
+
+        print("\nTraining Loss: {0:.2f}".format(avg_train_loss))
+        print("Testing Loss: {0:.2f}".format(avg_test_loss))
+        print("Testing Accuracy: {0:.2f}".format(avg_test_accuracy))
+        print("Time Taken: {0:.2f}".format((time.time()-start)/60))
+        print("----------------------------------------------")
+        
+    print("\nTraining complete!")
+
+    return model
+
 
 if __name__ == "__main__":
 
     # initialize the tokenizer
-    tokenizer = DistilBertTokenizerFast.from_pretrained('distilbert-base-uncased',do_lower_case=True, cache_dir="/tmp")
-
+    tokenizer = DistilBertTokenizerFast.from_pretrained('distilbert-base-uncased',  do_lower_case=True, cache_dir="/tmp")
+    print("model loaded")
     # get train, test and val data and labels
-    train_ids, test_ids, X_train, X_valid, X_test, Y_train, Y_valid, Y_test = get_data()
+    X_train, X_valid, X_test, Y_train, Y_valid, Y_test = get_data()
 
     train_texts = list(X_train.values)
     val_texts = list(X_valid.values)
@@ -171,6 +221,7 @@ if __name__ == "__main__":
     val_labels   = Y_valid
     test_labels  = Y_test
 
+ 
     # record the size to split the dataset
     x = len(train_texts)
     y = len(train_texts) + len(val_texts)
@@ -180,6 +231,7 @@ if __name__ == "__main__":
     all_tweets = train_texts + val_texts + test_texts
     all_labels = list(train_labels.values) + list(val_labels.values) + list(test_labels.values)
 
+
     # get tokenized word IDs and attention masks
     input_ids, attention_masks = tokenize_and_map_ID(all_tweets)
 
@@ -188,21 +240,11 @@ if __name__ == "__main__":
     attention_masks = torch.cat(attention_masks, dim=0)
     labels = torch.tensor(all_labels)
 
+    # Combine the training inputs into a TensorDataset.
     train_dataloader = get_train_loader(input_ids[:y], attention_masks[:y], labels[:y])
     test_dataloader = get_test_loader(input_ids[y:], attention_masks[y:], labels[y:])
 
-    model = BertForSequenceClassification.from_pretrained(
-        'distilbert-base-uncased', 
-        num_labels = 2,
-        output_attentions = True,
-        output_hidden_states = True, 
-        cache_dir="/tmp"
-    )
-    
-    model.load_state_dict(torch.load(MODEL_CHECKPOINT))
-    train_embedding, train_true_class = get_embeddings(train_dataloader, model)
-    test_embedding, test_true_class = get_embeddings(test_dataloader, model)
+    model = train_model(train_dataloader, test_dataloader)
 
-
-    generate_csv(train_ids, train_embedding, train_true_class, TRAIN_EMBEDDINGS)
-    generate_csv(test_ids, test_embedding, test_true_class, TEST_EMBEDDINGS)
+    torch.save(model.state_dict(), MODEL_CKPT)  
+    print("done!")
