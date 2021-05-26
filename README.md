@@ -104,4 +104,4 @@ Outputs: early_fusion_MLP.png, early_fusion_MLP.csv
 
 <h3>Workflow Diagram </h3>
 
-![workflow](/crisis-wf-diag.png)
+![workflow](/Early_Fusion.png)
