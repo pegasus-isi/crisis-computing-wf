@@ -1,4 +1,4 @@
-# Crisis-Computing-Workflow
+# Crisis-Computing-Early-Fusion-Workflow
 
 <h2> Steps of the Workflow </h2>
 
@@ -13,9 +13,13 @@
    
          bin/utils.add_labels()
   
-  3. Prefix split labels to the images --> 'train_', 'test_' and 'val_'
+  3. Get unique image ID's and their corresponding names
+      
+         bin/utils.get_ids()
+  
+  4. Prefix split labels to the images based on tweets data split --> 'train_', 'test_' and 'val_'
 
-          bin/utils.get_data_splits()
+          bin/utils.get_image_splits()
 
 | Input Image Name | Output Image Name |
 |------------------|-------------------|
@@ -33,6 +37,11 @@
 | california_wildfires_final_data.tsv| combined.csv|
   mexico_earthquake_final_data.tsv
   
+  2. Split the tweets into train, val and test randomly.
+      
+         bin/utils.split_tweets()
+         
+         
 <h3>Preprocess: Resize all the images (N parallel Jobs) </h3>
 
 Resizes all the input images to 600 x 600 dimension
@@ -42,72 +51,57 @@ Resizes all the input images to 600 x 600 dimension
       
 Outputs: resized_train_917791044158185473_0_0.jpg, ... ,  resized_val_917873017065160704_0_1.jpg
 
-<h3>Preprocess: Format tweets and split into train, test and val </h3>
+<h3>Preprocess: Formats all the tweets (N parallel Jobs) </h3>
  
-Cleans all the tweets by removing unnecessay words, characters and URLs and splits them into train, test datasets similar to images
+Cleans all the tweets by removing unnecessay words, characters and URLs 
 
     
           python bin/preprocess_tweets.py
       
-Outputs: train_tweets.csv, test_tweets.csv, val_tweets.csv
+Outputs: processed_train_tweets.csv, processed_test_tweets.csv, processed_val_tweets.csv
 
-<h3>HPO </h3>
-
-Performs Hyper-parameter tuning using optuna
-
-For Images:
-      
-          python bin/hpo_train_resnet.py --trails=10
-     
-For Text:
-      
-          python bin/hpo_train_bilstm.py --trials=10
-     
-Outputs: 
-  Image: best_resnet_hpo_params.txt, hpo_crisis_resnet.pkl
-  Text: best_bilstm_hpo_params.txt, hpo_crisis_resnet.pkl
  
 <h3>Train Model </h3>
 
-Trains models with best hyperparameters obtained from HPO
+Trains models on the processed dataset
 
 
 For Images:
       
-          python bin/train_resnet.py 
+          python bin/main_supcon.py 
      
 For Text:
       
-          python bin/train_bilstm.py
+          python bin/train_bert.py
      
 Outputs: 
-  Image: Loss_curve_resnet.png, Accuracy_curve_resnet.png, resnet_final_model.pth <br>
-  Text: Loss_curve_bilstm.png, Accuracy_curve_bilstm.png, bilstm_final_model.h5
+  Image: supcon_final_model.pth <br>
+  Text: bert_final_model
   
-<h3>Model Inference </h3>
+<h3>Generate Embeddings </h3>
 
-Produces confusion matrix and model output for train and test data
+Produces 128-dim embeddings for Images and 64-dim embeddings for Text
 
 For Images:
       
-          python bin/resnet_inference.py 
+          python bin/generate_supcon_embeddings.py 
      
 For Text:
       
-          python bin/bilstm_inference.py
+          python bin/generate_bert_embeddings.py
      
 Outputs: 
-  Image: resnet_train_output.csv, resnet_test_output.csv, resnet_confusion_matrix.png<br>
-  Text: bilstm_train_output.csv, bilstm_test_output.csv, bilstm_confusion_matrix.png
+  Image: supcon_train_embeddings.csv, supcon_test_embeddings.csv <br>
+  Text: bert_train_embeddings.csv, bert_test_embeddings.csv
 
-<h3>Late Fusion </h3>
+<h3>Early Fusion </h3>
 
-Uses Mean Probability Concatenation, Logistic Regression and MLP Decision Policy to fuse image and text model outputs. Generates Performance statistics report.
+Uses the generated embeddings, concats them and is given as an input to a Multi-layered Perceptron. Produces Confusion Matrix and Classification Performance report.
       
-          python bin/late_fusion.py 
+          python bin/early_fusion.py 
      
-Outputs: confusion_matrix_MPC.png, confusion_matrix_LR.png, confusion_matrix_MLP.png, report_MPC.png, report_LR.png, report_MLP.png
+Outputs: early_fusion_MLP.png, early_fusion_MLP.csv
 
 <h3>Workflow Diagram </h3>
 
-![workflow](/crisis-wf-diag.png)
+![workflow](/Early_Fusion.png)
