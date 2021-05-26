@@ -1,4 +1,4 @@
-# Crisis-Computing-Workflow
+# Crisis-Computing-Early-Fusion-Workflow
 
 <h2> Steps of the Workflow </h2>
 
@@ -13,9 +13,13 @@
    
          bin/utils.add_labels()
   
-  3. Prefix split labels to the images --> 'train_', 'test_' and 'val_'
+  3. Get unique image ID's and their corresponding names
+      
+         bin/utils.get_ids()
+  
+  4. Prefix split labels to the images based on tweets data split --> 'train_', 'test_' and 'val_'
 
-          bin/utils.get_data_splits()
+          bin/utils.get_image_splits()
 
 | Input Image Name | Output Image Name |
 |------------------|-------------------|
@@ -33,6 +37,11 @@
 | california_wildfires_final_data.tsv| combined.csv|
   mexico_earthquake_final_data.tsv
   
+  2. Split the tweets into train, val and test randomly.
+      
+         bin/utils.split_tweets()
+         
+         
 <h3>Preprocess: Resize all the images (N parallel Jobs) </h3>
 
 Resizes all the input images to 600 x 600 dimension
@@ -42,14 +51,14 @@ Resizes all the input images to 600 x 600 dimension
       
 Outputs: resized_train_917791044158185473_0_0.jpg, ... ,  resized_val_917873017065160704_0_1.jpg
 
-<h3>Preprocess: Format tweets and split into train, test and val </h3>
+<h3>Preprocess: Formats all the tweets (N parallel Jobs) </h3>
  
-Cleans all the tweets by removing unnecessay words, characters and URLs and splits them into train, test datasets similar to images
+Cleans all the tweets by removing unnecessay words, characters and URLs 
 
     
           python bin/preprocess_tweets.py
       
-Outputs: train_tweets.csv, test_tweets.csv, val_tweets.csv
+Outputs: processed_train_tweets.csv, processed_test_tweets.csv, processed_val_tweets.csv
 
 <h3>HPO </h3>
 
