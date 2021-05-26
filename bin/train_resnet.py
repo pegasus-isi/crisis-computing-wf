@@ -4,7 +4,6 @@ import numpy as np
 import torch
 import re
 import glob
-import sys
 from torch.utils.data import DataLoader, Dataset
 import torchvision
 import matplotlib.pyplot as plt
@@ -12,14 +11,15 @@ from PIL import Image
 import os
 
 os.environ['MPLCONFIGDIR'] = '/tmp'
-# Constant variables
 
-DEVICE = "cpu" #("cuda" if torch.cuda.is_available() else "cpu")
+# Constant variables
+DEVICE = ("cuda" if torch.cuda.is_available() else "cpu")
 MEAN = 0.4905, 0.4729, 0.4560 
 STD = 0.2503, 0.2425, 0.2452
-BATCH_SIZE = 2
+BATCH_SIZE = 8
 EPOCHS = 1
 PATIENCE = 5
+
 # Paths
 EARLY_STOPPING_PATH = 'earlystopping.pth'
 CHECKPOINT =  'checkpoint_resnet.pth'

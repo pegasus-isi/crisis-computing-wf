@@ -2,12 +2,12 @@
 
 import glob
 import os
-import random
 import pandas as pd
 import numpy as np
 import csv
 import re
 
+# PATHS
 REL = os.getcwd()
 INFORMATIVE_IMAGES_1 = REL + '/dataset_temp/Training_data/Informative'
 INFORMATIVE_IMAGES_2 = REL + '/dataset_temp/Testing_data/Informative'
@@ -18,6 +18,10 @@ INFORMATIVE_TWEETS = REL + '/dataset_temp/tweets_csv/INFORMATIVE_TWEETS/'
 NON_INFORMATIVE_TWEETS = REL + '/dataset_temp/tweets_csv/NONINFORMATIVE_TWEETS/'
 
 FINAL_TWEETS = REL + '/dataset_temp/final_tweets/'
+
+
+
+# Important utility functions
 
 def add_prefix(data, prefix):
     """
@@ -35,7 +39,11 @@ def add_prefix(data, prefix):
     return dataset
     
 def get_specific_images(text_df, image_id_name_dict):
-    
+    """
+    returns images having same ID as that of the tweets.
+    :params: text_df = tweets csv
+             image_id_name_dict = Dictionary containing ID's as key and Image name as value.
+    """
     images = []
     for index, row in text_df.iterrows():
         tweet_id = str(row['tweet_id'])
@@ -45,7 +53,7 @@ def get_specific_images(text_df, image_id_name_dict):
 
 def get_image_splits(train_tweets, val_tweets, test_tweets, image_id_name_dict):
     """
-    splits the dataset into train, validation and testing with ratio 80-10-10.
+    splits the dataset into train, validation and testing based on the tweets splits.
     
     """
     train_tweet_df = pd.read_csv(train_tweets)
@@ -100,20 +108,29 @@ def refactor_tweets(file, tweets_df, tweet_ids):
     
     for ids in tweet_ids:
         row = tweets_df.loc[tweets_df['tweet_id'] == ids]
+        if len(row['tweet_text'].values)== 0:
+            continue
         csv_ob.writerow([row['tweet_id'].values[0], row['tweet_text'].values[0], row['text_info'].values[0]])
         
 def get_ids(images):
-   
+    """
+    This function finds the unique ID's and all the images having the same ID and returns a dictionary 
+    """
     image_ids = {}
+    img_names = {}
+
     for image in images:
         image_name = image.split('/')[-1]
         img_id = str(re.findall(r'[0-9]+', image_name)[0])
         
         if img_id in image_ids.keys():
-            image_ids[img_id].append(image)
+            if image_name not in img_names.keys():
+                image_ids[img_id].append(image)
         else:
             image_ids[img_id] = [image]
-            
+
+        img_names[image_name] = 1
+
     return list(image_ids.keys()), image_ids
 
 def get_tweets(image_ids):
@@ -145,7 +162,9 @@ def get_tweets(image_ids):
 
 
 def split_tweets(path):
-    
+    """
+    Splits the tweets randomly into train, val and test in the ratio 70:15:15 respectively.
+    """
     tweets_df = pd.read_csv(path)
     num_tweets = len(tweets_df)
     tweets_df = tweets_df.sample(frac = 1) 

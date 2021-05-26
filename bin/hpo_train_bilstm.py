@@ -33,7 +33,7 @@ max_len = 150
 embed_size = 200
 EMBEDDING_FILE = 'glove.twitter.27B.200d.txt'
 class_weight = {0: 1.48, 1: 0.75}
-epochs = 3
+epochs = 2
 
 
 METRICS = [
