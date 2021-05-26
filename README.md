@@ -60,62 +60,47 @@ Cleans all the tweets by removing unnecessay words, characters and URLs
       
 Outputs: processed_train_tweets.csv, processed_test_tweets.csv, processed_val_tweets.csv
 
-<h3>HPO </h3>
-
-Performs Hyper-parameter tuning using optuna
-
-For Images:
-      
-          python bin/hpo_train_resnet.py --trails=10
-     
-For Text:
-      
-          python bin/hpo_train_bilstm.py --trials=10
-     
-Outputs: 
-  Image: best_resnet_hpo_params.txt, hpo_crisis_resnet.pkl
-  Text: best_bilstm_hpo_params.txt, hpo_crisis_resnet.pkl
  
 <h3>Train Model </h3>
 
-Trains models with best hyperparameters obtained from HPO
+Trains models on the processed dataset
 
 
 For Images:
       
-          python bin/train_resnet.py 
+          python bin/main_supcon.py 
      
 For Text:
       
-          python bin/train_bilstm.py
+          python bin/train_bert.py
      
 Outputs: 
-  Image: Loss_curve_resnet.png, Accuracy_curve_resnet.png, resnet_final_model.pth <br>
-  Text: Loss_curve_bilstm.png, Accuracy_curve_bilstm.png, bilstm_final_model.h5
+  Image: supcon_final_model.pth <br>
+  Text: bert_final_model
   
-<h3>Model Inference </h3>
+<h3>Generate Embeddings </h3>
 
-Produces confusion matrix and model output for train and test data
+Produces 128-dim embeddings for Images and 64-dim embeddings for Text
 
 For Images:
       
-          python bin/resnet_inference.py 
+          python bin/generate_supcon_embeddings.py 
      
 For Text:
       
-          python bin/bilstm_inference.py
+          python bin/generate_bert_embeddings.py
      
 Outputs: 
-  Image: resnet_train_output.csv, resnet_test_output.csv, resnet_confusion_matrix.png<br>
-  Text: bilstm_train_output.csv, bilstm_test_output.csv, bilstm_confusion_matrix.png
+  Image: supcon_train_embeddings.csv, supcon_test_embeddings.csv <br>
+  Text: bert_train_embeddings.csv, bert_test_embeddings.csv
 
-<h3>Late Fusion </h3>
+<h3>Early Fusion </h3>
 
-Uses Mean Probability Concatenation, Logistic Regression and MLP Decision Policy to fuse image and text model outputs. Generates Performance statistics report.
+Uses the generated embeddings, concats them and is given as an input to a Multi-layered Perceptron. Produces Confusion Matrix and Classification Performance report.
       
-          python bin/late_fusion.py 
+          python bin/early_fusion.py 
      
-Outputs: confusion_matrix_MPC.png, confusion_matrix_LR.png, confusion_matrix_MLP.png, report_MPC.png, report_LR.png, report_MLP.png
+Outputs: early_fusion_MLP.png, early_fusion_MLP.csv
 
 <h3>Workflow Diagram </h3>
 
