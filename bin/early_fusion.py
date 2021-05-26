@@ -14,10 +14,10 @@ TEST_TEXT_PATH = 'bert_test_embeddings.csv'
 TRAIN_IMAGE_PATH = 'supcon_train_embeddings.csv'
 TEST_IMAGE_PATH = 'supcon_test_embeddings.csv'
 
-BATCH_SIZE = 2
+BATCH_SIZE = 32
 DEVICE = ("cuda" if torch.cuda.is_available() else "cpu")
 LR = 1e-3
-EPOCHS = 4
+EPOCHS = 1
 confusion_matrix_EF = 'early_fusion_MLP.png'
 report_EF = 'early_fusion_MLP.csv'
 

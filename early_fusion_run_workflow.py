@@ -1,9 +1,7 @@
-import glob 
+
 import os
-import cv2
 import numpy as np
 from Pegasus.api import *
-from pathlib import Path
 import logging
 import argparse
 import time
@@ -26,8 +24,10 @@ def run_pre_workflow():
     Executes pre-workflow tasks:
         1. Get Informative and Non-Informative images from the dataset directory.
         2. Add label _0 for Non-Informative and _1 for Informative class respectively.
-        3. Split Images into train, test and val set.
-        4. Combine all tweets into one CSV file.
+        3. Combine all tweets into one CSV file.
+        4. Split Tweets into train, test and val set.
+        5. Split Images into train, test and val set.
+        
 
     returns paths to each image in the dataset, path to the tweets csv file, and its filename.
     """
@@ -252,6 +252,7 @@ def run_workflow(EMBEDDING_BASE_PATH):
     job_preprocess_tweets[2].add_outputs(preprocessed_test_tweets)
     job_preprocess_tweets[2].add_args('--filename', 'test_tweets.csv')
 
+
     #Job 2: Train BERT Model
     bert_final_model = File('bert_final_model.pth')
 
@@ -260,6 +261,7 @@ def run_workflow(EMBEDDING_BASE_PATH):
                         .add_outputs(bert_final_model)\
                         .add_args('--batch_size', BERT_BATCH_SIZE, '--epochs', BERT_EPOCHS)\
                         .add_profiles(Namespace.PEGASUS, key="maxwalltime", value=MAXTIMEWALL)
+
 
     #Job 3: Generate BERT Embeddings
     bert_train_embeddings = File('bert_train_embeddings.csv')
@@ -337,11 +339,11 @@ def main():
     parser.add_argument('--embedding_path', type=str, default='dataset_temp/',help='path to glove embedding')
     parser.add_argument('--num_workers', type=int, default= 5, help = "number of workers")
     parser.add_argument('--maxwalltime', type=int, default= 30, help = "maxwalltime")
-    parser.add_argument('--supcon_bs', type=int, default= 2, help = "Batch size for SupCon model") # change this default to 16/64/256 depending on gpu
+    parser.add_argument('--supcon_bs', type=int, default= 8, help = "Batch size for SupCon model") # change this default to 16/64/256 depending on gpu
     parser.add_argument('--supcon_epochs', type=int, default= 1, help = "Epochs for SupCon model") # change to 1000
-    parser.add_argument('--supcon_img_size', type=int, default= 64, help = "Image Size to be fed to SupCon model") # if one gpu then 128 should be the max size
-    parser.add_argument('--bert_bs', type=int, default= 2, help = "Batch size for BERT model") 
-    parser.add_argument('--bert_epochs', type=int, default= 4, help = "Epochs for BERT model") 
+    parser.add_argument('--supcon_img_size', type=int, default= 16, help = "Image Size to be fed to SupCon model") # if one gpu then 128 should be the max size
+    parser.add_argument('--bert_bs', type=int, default= 8, help = "Batch size for BERT model") 
+    parser.add_argument('--bert_epochs', type=int, default= 1, help = "Epochs for BERT model") 
     
     ARGS                = parser.parse_args()
     EMBEDDING_BASE_PATH = ARGS.embedding_path

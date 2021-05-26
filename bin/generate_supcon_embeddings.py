@@ -12,9 +12,10 @@ from PIL import Image
 import os
 import csv
 import re
-import itertools
 from sklearn.metrics import confusion_matrix
 from resnet_big import SupConResNet
+
+
 os.environ['MPLCONFIGDIR'] = '/tmp'
 
 DEVICE = ("cuda" if torch.cuda.is_available() else "cpu")
@@ -23,7 +24,7 @@ STD = 0.2503, 0.2425, 0.2452
 OUT_FILE_TRAIN = 'supcon_train_embeddings.csv'
 OUT_FILE_TEST = 'supcon_test_embeddings.csv'
 CHECKPOINT = 'supcon_final_model.pth'
-BATCH_SIZE = 1
+BATCH_SIZE = 1 #DO NOT CHANGE
 CACHE = {}
 PATH =  ""
 
@@ -131,6 +132,7 @@ def main():
     model.load_state_dict(torch.load(CHECKPOINT))
     generate_embeddings(model, train_loader, 'train')
     generate_embeddings(model, test_loader, 'test')
+    print("done!")
     return
 
 if __name__ == '__main__':

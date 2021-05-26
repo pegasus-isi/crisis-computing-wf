@@ -17,8 +17,8 @@ os.environ['MPLCONFIGDIR'] = '/tmp'
 os.environ['TRANSFORMERS_CACHE'] = '/tmp'
 
 DATA_PATH = ""
-BATCH_SIZE = 2
-EPOCHS = 4
+BATCH_SIZE = 8
+EPOCHS = 1
 DEVICE = ("cuda" if torch.cuda.is_available() else "cpu")
 MODEL_CKPT = 'bert_final_model.pth'
 

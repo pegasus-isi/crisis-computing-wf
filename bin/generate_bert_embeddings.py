@@ -13,8 +13,8 @@ from transformers import BertForSequenceClassification, AdamW, BertConfig
 os.environ['MPLCONFIGDIR'] = '/tmp'
 os.environ['TRANSFORMERS_CACHE'] = '/tmp'
 DATA_PATH = ""
-BATCH_SIZE = 1
-DEVICE = "cpu"#("cuda" if torch.cuda.is_available() else "cpu")
+BATCH_SIZE = 64
+DEVICE = ("cuda" if torch.cuda.is_available() else "cpu")
 
 MODEL_CHECKPOINT = 'bert_final_model.pth'
 TRAIN_EMBEDDINGS = 'bert_train_embeddings.csv'
@@ -200,9 +200,11 @@ if __name__ == "__main__":
     )
     
     model.load_state_dict(torch.load(MODEL_CHECKPOINT))
+    model.to(DEVICE)
     train_embedding, train_true_class = get_embeddings(train_dataloader, model)
     test_embedding, test_true_class = get_embeddings(test_dataloader, model)
 
 
     generate_csv(train_ids, train_embedding, train_true_class, TRAIN_EMBEDDINGS)
     generate_csv(test_ids, test_embedding, test_true_class, TEST_EMBEDDINGS)
+    print("done!")
