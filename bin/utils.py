@@ -9,15 +9,17 @@ import re
 
 # PATHS
 REL = os.getcwd()
-INFORMATIVE_IMAGES_1 = REL + '/dataset_temp/Training_data/Informative'
-INFORMATIVE_IMAGES_2 = REL + '/dataset_temp/Testing_data/Informative'
-NON_INFORMATIVE_IMAGES_1 = REL + '/dataset_temp/Testing_data/Non-Informative'
-NON_INFORMATIVE_IMAGES_2 = REL + '/dataset_temp/Training_data/Non-Informative'
+DATA_FOLDER = '/dataset_temp'  # change this to the name of the folder containing the entire data
 
-INFORMATIVE_TWEETS = REL + '/dataset_temp/tweets_csv/INFORMATIVE_TWEETS/'
-NON_INFORMATIVE_TWEETS = REL + '/dataset_temp/tweets_csv/NONINFORMATIVE_TWEETS/'
+INFORMATIVE_IMAGES_1 = REL + DATA_FOLDER + '/Training_data/Informative'
+INFORMATIVE_IMAGES_2 = REL + DATA_FOLDER + '/Testing_data/Informative'
+NON_INFORMATIVE_IMAGES_1 = REL + DATA_FOLDER + '/Testing_data/Non-Informative'
+NON_INFORMATIVE_IMAGES_2 = REL + DATA_FOLDER + '/Training_data/Non-Informative'
 
-FINAL_TWEETS = REL + '/dataset_temp/final_tweets/'
+INFORMATIVE_TWEETS = REL + DATA_FOLDER + '/tweets_csv/INFORMATIVE_TWEETS/'
+NON_INFORMATIVE_TWEETS = REL + DATA_FOLDER + '/tweets_csv/NONINFORMATIVE_TWEETS/'
+
+FINAL_TWEETS = REL + DATA_FOLDER + '/final_tweets/'
 
 
 
