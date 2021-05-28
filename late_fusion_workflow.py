@@ -394,7 +394,7 @@ def main():
 
     parser = argparse.ArgumentParser(description="Crisis Computing Workflow")   
 
-    parser.add_argument('--embedding_path', type=str, default='dataset_temp/',help='path to glove embedding')
+    parser.add_argument('--embedding_path', type=str, default='full_data/',help='path to glove embedding')
     parser.add_argument('--bilstm_trials', type=int, default=1, help = "number of Bi-LSTM trials")   
     parser.add_argument('--resnet_trials', type=int, default=1, help = "number of ResNet-50 trials") 
     parser.add_argument('--num_workers', type=int, default= 5, help = "number of workers")
