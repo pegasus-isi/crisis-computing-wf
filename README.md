@@ -1,5 +1,33 @@
 # Crisis-Computing-Late-Fusion-Workflow
 
+<h2> Dataset </h2>
+This repository contains two types of dataset: <br>
+
+<b>partial_data:</b> To run the workflow on a smaller dataset to debug issues.<br>
+<b>full_data:</b> To run the workflow on the entire dataset.<br>
+  
+In order to change between the two please follow these steps:
+  1. Go to bin/utils.py
+  2. Locate the 'DATA_FOLDER' variable on the 12th line.
+  3. If using partial data:
+             
+         DATA_FOLDER = '/partial_data'
+  4. If using full data:
+ 
+         DATA_FOLDER = '/full_data'
+
+Additionally, follow these steps to download pre-trained GloVe embeddings:
+  1. Go to http://nlp.stanford.edu/data/glove.twitter.27B.zip
+  2. Unzip the file
+  3. Copy the 'glove.twitter.27B.200d.txt' and place it inside <b>full_data</b> and <b>partial_data</b>
+  4. Default embedding path in late_fusion_workflow.py has been set to full_data in the parser arguments.
+
+<b>**Important Note:**</b>
+
+For all the Training, HPO and Inference scripts: <br>
+If using <b>partial_data</b> set BATCH_SIZE = 2 <br>
+If using <b>full_data</b> set BATCH_SIZE>8  <br>
+
 <h2> Steps of the Workflow </h2>
 
 <h3>Pre-Workflow Computations </h3>
