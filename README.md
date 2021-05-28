@@ -17,7 +17,7 @@ In order to change between the two please follow these steps:
          DATA_FOLDER = '/full_data'
 
 Additionally, follow these steps to download pre-trained GloVe embeddings:
-  1. Go to http://nlp.stanford.edu/data/glove.twitter.27B.zip
+  1. Go to https://nlp.stanford.edu/projects/glove/ and download 'glove.twitter.27B.zip'
   2. Unzip the file
   3. Copy the 'glove.twitter.27B.200d.txt' and place it inside <b>full_data</b> and <b>partial_data</b>
   4. Default embedding path in late_fusion_workflow.py has been set to full_data in the parser arguments.
