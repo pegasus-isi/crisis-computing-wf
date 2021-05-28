@@ -9,7 +9,7 @@ import re
 
 # PATHS
 REL = os.getcwd()
-DATA_FOLDER = '/dataset_temp'  # change this to the name of the folder containing the entire data
+DATA_FOLDER = '/full_data'  # change this to the name of the folder containing the entire data 
 
 INFORMATIVE_IMAGES_1 = REL + DATA_FOLDER + '/Training_data/Informative'
 INFORMATIVE_IMAGES_2 = REL + DATA_FOLDER + '/Testing_data/Informative'
