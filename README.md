@@ -1,5 +1,7 @@
 # Crisis-Computing-Late-Fusion-Workflow
 
+![workflow](graph.png)
+
 <h2> Dataset </h2>
 This repository contains two types of dataset: <br>
 
