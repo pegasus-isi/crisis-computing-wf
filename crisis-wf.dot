@@ -57,23 +57,6 @@ digraph G {
        bilstm_inference -> "bilstm_train_output.csv"
        bilstm_inference -> "bilstm_confusion_matrix.png"
 
-       "bilstm_test_output.csv" -> late_fusion
-       "bilstm_train_output.csv" -> late_fusion
-
-       "late_fusion_LR.csv" [shape=box]
-       "late_fusion_LR.png" [shape=box]
-       "late_fusion_MLP.csv" [shape=box]
-       "late_fusion_MLP.png" [shape=box]
-       "late_fusion_MPC.csv" [shape=box]
-       "late_fusion_MPC.png" [shape=box]
-
-       late_fusion -> "late_fusion_LR.csv"
-       late_fusion -> "late_fusion_LR.png"
-       late_fusion -> "late_fusion_MLP.csv"
-       late_fusion -> "late_fusion_MLP.png"
-       late_fusion -> "late_fusion_MPC.csv"
-       late_fusion -> "late_fusion_MPC.png"
-
 
 
        subgraph cluster_text_pipeline_input_files {
@@ -81,6 +64,8 @@ digraph G {
            "val_tweets.csv"
            "test_tweets.csv"
            glove_embeddings
+           
+           label="input files"
        }
 
        color=red
@@ -88,7 +73,93 @@ digraph G {
     }
 
     subgraph cluster_image_pipeline {
+        
+        subgraph cluster_image_pipeline_input_files {
+            jpg_images_0 [shape=box]
+            jpg_images_1 [shape=box]
+            
+            label="input files (divided evenly amongst NUM_WORKERS)"
+        }
+        
+        subgraph cluster_preprocess_images {
+            preprocess_images_0
+            preprocess_images_1
+            
+            label="NUM_WORKERS number of preprocess image jobs"
+        }
 
+        jpg_images_0 -> preprocess_images_0
+        jpg_images_1 -> preprocess_images_1
+        
+        resized_jpg_images_0 [shape=box]
+        resized_jpg_images_1 [shape=box]
+        
+        preprocess_images_0 -> resized_jpg_images_0
+        preprocess_images_1 -> resized_jpg_images_1
+        
+        resized_jpg_images_0 -> hpo_train_resnet
+        resized_jpg_images_1 -> hpo_train_resnet
+        
+        "hpo_best_resnet_params.txt" [shape=box]
+        "hpo_checkpoint.pkl.pkl" [shape=box]
+        "checkpoint_hpo.pkl" [shape=box]
+        
+        hpo_train_resnet -> "hpo_best_resnet_params.txt"
+        hpo_train_resnet -> "hpo_checkpoint.pkl.pkl"
+        hpo_train_resnet -> "checkpoint_hpo.pkl"
+        
+        "hpo_best_resnet_params.txt" -> train_resnet
+        resized_jpg_images_0 -> train_resnet
+        resized_jpg_images_1 -> train_resnet
+        
+        "resnet_final_model.pth" [shape=box]
+        "Accuracy_curve_resent.png" [shape=box]
+        "Loss_curve_resnet.png" [shape=box]
+        "checkpoint_resnet.pth" [shape=box]
+        
+        train_resnet -> "resnet_final_model.pth"
+        train_resnet -> "Accuracy_curve_resent.png"
+        train_resnet -> "Loss_curve_resnet.png"
+        train_resnet -> "checkpoint_resnet.pth"
+        
+        "resnet_final_model.pth" -> resnet_inference
+        resized_jpg_images_0 -> resnet_inference
+        resized_jpg_images_1 -> resnet_inference 
+        
+        "resnet_test_output.csv" [shape=box]
+        "resnet_train_output.csv" [shape=box]
+        "resnet_confusion_matrix.png" [shape=box]
+
+        resnet_inference -> "resnet_test_output.csv"
+        resnet_inference -> "resnet_train_output.csv"
+        resnet_inference -> "resnet_confusion_matrix.png"
+        
+        color=orange
+        label="image pipeline"
     }
+    
+    "resnet_test_output.csv" -> late_fusion
+    "resnet_train_output.csv" -> late_fusion
+    
+   "bilstm_test_output.csv" -> late_fusion
+   "bilstm_train_output.csv" -> late_fusion
+
+   "late_fusion_LR.csv" [shape=box]
+   "late_fusion_LR.png" [shape=box]
+   "late_fusion_MLP.csv" [shape=box]
+   "late_fusion_MLP.png" [shape=box]
+   "late_fusion_MPC.csv" [shape=box]
+   "late_fusion_MPC.png" [shape=box]
+
+   late_fusion -> "late_fusion_LR.csv"
+   late_fusion -> "late_fusion_LR.png"
+   late_fusion -> "late_fusion_MLP.csv"
+   late_fusion -> "late_fusion_MLP.png"
+   late_fusion -> "late_fusion_MPC.csv"
+   late_fusion -> "late_fusion_MPC.png"
+   
+   label="Crisis Computing Late Fusion Workflow"
+   labelloc="t"
+   labelfontsize=20.0
 
 }
