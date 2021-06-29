@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import glob, os
+import glob
 import cv2
 IMG_SIZE = 600
 

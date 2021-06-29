@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 import pandas as pd
-import glob
 import numpy as np
 import nltk
 import re

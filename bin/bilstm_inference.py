@@ -3,7 +3,6 @@
 import pandas as pd
 import numpy as np
 import tensorflow as tf
-import os
 import keras
 import matplotlib.pyplot as plt
 from keras.preprocessing import text, sequence
@@ -46,7 +45,7 @@ def prepare_data_train(train_df, test_df):
 
 def evaluate(dtype, X_test_f, Y_test_f, model):
     
-    accr = model.evaluate(X_test_f,Y_test_f)
+    accr = model.evaluate(X_test_f,Y_test_f) # NOT USED
     predictions = model.predict(X_test_f)
     p = 0.5
     output_class = np.where(predictions > 0.5, 1, 0)

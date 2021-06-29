@@ -4,7 +4,6 @@ import numpy as np
 import torch
 import re
 import glob
-import sys
 from torch.utils.data import DataLoader, Dataset
 import torchvision
 import matplotlib.pyplot as plt

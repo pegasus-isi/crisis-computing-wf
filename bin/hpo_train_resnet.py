@@ -3,7 +3,6 @@
 import numpy as np
 import torch
 import glob
-import sys
 from torch.utils.data import DataLoader, Dataset
 import torchvision
 import re
@@ -326,7 +325,7 @@ def objective(trial):
     
     train_data = get_dataloader('train', train_transform)
     val_data = get_dataloader('val', test_transform)
-    test_data = get_dataloader('test', test_transform)
+    #test_data = get_dataloader('test', test_transform) # NOT USED
 
     loss, accuracy, model = train(train_data, val_data, trial)
     
@@ -371,7 +370,6 @@ def load_study():
             STUDY.optimize(objective, n_trials=rem_trials, callbacks=[hpo_monitor])
         else:
             print("All trials done!")
-            pass
         
     except Exception as e:
         print(e)

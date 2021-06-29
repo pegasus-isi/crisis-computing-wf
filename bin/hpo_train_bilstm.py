@@ -22,11 +22,6 @@ from sklearn.metrics import accuracy_score, roc_auc_score
 from sklearn.metrics import confusion_matrix
 import itertools
 
-from sklearn.metrics import confusion_matrix
-import itertools
-
-
-
 target_names = ["Informative","Noninforamtive"]
 
 max_len = 150
@@ -227,7 +222,6 @@ def load_study():
             STUDY.optimize(objective, n_trials=rem_trials, callbacks=[hpo_monitor])
         else:
             print("All trials done!")
-            pass
         
     except Exception as e:
         print(e)
@@ -254,5 +248,4 @@ def main():
     return
 
 if __name__ == "__main__":
-    
     main()

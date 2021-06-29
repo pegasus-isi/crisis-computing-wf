@@ -1,6 +1,5 @@
-FROM pytorch/pytorch:1.8.1-cuda10.2-cudnn7-runtime
-RUN apt-get update
-RUN apt-get install ffmpeg libsm6 libxext6 curl wget openssh-client -y
+FROM pytorch/pytorch:1.6.0-cuda10.1-cudnn7-devel
+RUN apt-get update && apt-get -y upgrade && apt-get install ffmpeg libsm6 libxext6 curl wget openssh-client -y
 
 RUN python3 -m pip install --upgrade pip
 RUN pip3 install \
@@ -22,7 +21,7 @@ RUN pip3 install \
     seaborn \
     scikit-plot \
     torch-summary \
-    tensorflow\
+    tensorflow==2.3.0 \
     keras \
     tensorboard_logger
 

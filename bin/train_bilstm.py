@@ -3,7 +3,6 @@
 import pandas as pd
 import numpy as np
 import tensorflow as tf
-import os
 import matplotlib.pyplot as plt
 from keras.layers import Dense,Input, LSTM, Bidirectional, Activation, Conv1D, GRU
 from keras.callbacks import Callback
