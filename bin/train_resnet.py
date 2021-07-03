@@ -22,7 +22,7 @@ PATIENCE = 5
 
 # Paths
 EARLY_STOPPING_PATH = 'earlystopping.pth'
-CHECKPOINT =  'checkpoint_resnet.pth'
+CHECKPOINT =  'resnet_train_checkpoint.pth'
 FINAL_OUTPUT = 'resnet_final_model.pth'
 PATH = ""
 #--------------------------------------------------------------------------------------------------------------------------

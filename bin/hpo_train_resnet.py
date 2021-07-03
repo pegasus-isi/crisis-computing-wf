@@ -337,7 +337,7 @@ def hpo_monitor(study, trial):
     Save optuna hpo study
     """
     joblib.dump(study, "temp.pkl")
-    os.rename('temp.pkl', 'checkpoint_hpo.pkl')
+    os.rename('temp.pkl', 'resnet_hpo_checkpoint.pkl')
     
     
 def get_best_params(best):
@@ -361,7 +361,7 @@ def load_study():
     """
     
     try:
-        STUDY = joblib.load(CHECKPOINT_DIR +"checkpoint_hpo.pkl")
+        STUDY = joblib.load(CHECKPOINT_DIR +"resnet_hpo_checkpoint.pkl")
         print("Successfully loaded the existing study!")
         
         rem_trials = TRIALS - len(STUDY.trials_dataframe())

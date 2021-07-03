@@ -1,0 +1,11 @@
+submit
+containers
+full_data/final_tweets
+full_data/glove_twitter
+full_data/glove_twitter.tar.gz
+replicas.yml
+transformations.yml
+sites.yml
+workflow.yml
+pegasus.properties
+*.pyc

@@ -35,8 +35,8 @@ def add_prefix(data, prefix):
         path = '/'.join(imgs.split('/')[:-1])
         name = imgs.split('/')[-1]
         new_name = os.path.join(path, (prefix + name))
-        os.rename(imgs, new_name)
-        dataset.append(new_name)
+        #os.rename(imgs, new_name)
+        dataset.append((imgs, new_name))
         
     return dataset
     
@@ -201,7 +201,7 @@ def add_labels(images, label):
         name = image.split('/')[-1]
         path = '/'.join(image.split('/')[:-1])
         new_name = os.path.join(path, (name[:-4]+prefix+name[-4:]))
-        os.rename(image, new_name)
-        labelled_images.append(new_name)
+        #os.rename(image, new_name)
+        labelled_images.append((image, new_name))
+    
     return labelled_images
-
