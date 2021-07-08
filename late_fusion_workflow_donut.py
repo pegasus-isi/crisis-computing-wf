@@ -87,13 +87,13 @@ def replica_catalog(train_tweets_path, val_tweets_path, test_tweets_path, datase
     glove_embeddings = File('glove.twitter.27B.200d.txt')
     
     # File objects for train, val and test tweets csv
-    train_tweets_name = File(train_tweets_path[1].split('/')[-1])
-    val_tweets_name = File(val_tweets_path[1].split('/')[-1])
-    test_tweets_name = File(test_tweets_path[1].split('/')[-1])
+    train_tweets_name = File(train_tweets_path.split('/')[-1])
+    val_tweets_name = File(val_tweets_path.split('/')[-1])
+    test_tweets_name = File(test_tweets_path.split('/')[-1])
     
-    rc.add_replica("local", train_tweets_name, train_tweets_path[0])
-    rc.add_replica("local", val_tweets_name, val_tweets_path[0])
-    rc.add_replica("local", test_tweets_name, test_tweets_path[0])
+    rc.add_replica("local", train_tweets_name, train_tweets_path)
+    rc.add_replica("local", val_tweets_name, val_tweets_path)
+    rc.add_replica("local", test_tweets_name, test_tweets_path)
     
     rc.add_replica("local", glove_embeddings, os.path.join(os.getcwd(), os.path.join(EMBEDDING_BASE_PATH, GLOVE_EMBEDDING_FILE)))            
     rc.write()
