@@ -72,6 +72,7 @@ def replica_catalog(train_tweets_path, val_tweets_path, test_tweets_path, datase
              
     """
     rc = ReplicaCatalog()
+    http_location = "https://workflow.isi.edu/Panorama/Data/CrisisComputing"
 
     # list of input file objects
     input_images = []
@@ -81,7 +82,10 @@ def replica_catalog(train_tweets_path, val_tweets_path, test_tweets_path, datase
         name = image_path[1].split("/")[-1]
         image_file = File(name)
         input_images.append(image_file)
-        rc.add_replica("local", image_file,  image_path[0])
+        
+        path_split = image_path[0].split("/")
+        #rc.add_replica("local", image_file,  image_path[0])
+        rc.add_replica("isi", image_file, os.path.join(http_location, path_split[-2], path_split[-1]))
 
    
     glove_embeddings = File('glove.twitter.27B.200d.txt')
@@ -91,11 +95,19 @@ def replica_catalog(train_tweets_path, val_tweets_path, test_tweets_path, datase
     val_tweets_name = File(val_tweets_path.split('/')[-1])
     test_tweets_name = File(test_tweets_path.split('/')[-1])
     
-    rc.add_replica("local", train_tweets_name, train_tweets_path)
-    rc.add_replica("local", val_tweets_name, val_tweets_path)
-    rc.add_replica("local", test_tweets_name, test_tweets_path)
+    #rc.add_replica("local", train_tweets_name, train_tweets_path)
+    #rc.add_replica("local", val_tweets_name, val_tweets_path)
+    #rc.add_replica("local", test_tweets_name, test_tweets_path)
+    #rc.add_replica("local", glove_embeddings, os.path.join(os.getcwd(), os.path.join(EMBEDDING_BASE_PATH, GLOVE_EMBEDDING_FILE)))            
     
-    rc.add_replica("local", glove_embeddings, os.path.join(os.getcwd(), os.path.join(EMBEDDING_BASE_PATH, GLOVE_EMBEDDING_FILE)))            
+    path_split = train_tweets_path.split('/')
+    rc.add_replica("isi", train_tweets_name, os.path.join(http_location, path_split[-2], path_split[-1]))
+    path_split = val_tweets_path.split('/')
+    rc.add_replica("isi", val_tweets_name, os.path.join(http_location, path_split[-2], path_split[-1]))
+    path_split = test_tweets_path.split('/')
+    rc.add_replica("isi", test_tweets_name, os.path.join(http_location, path_split[-2], path_split[-1]))
+    
+    rc.add_replica("isi", glove_embeddings, os.path.join(http_location, "glove_twitter", GLOVE_EMBEDDING_FILE))          
     rc.write()
 
     return input_images, train_tweets_name, val_tweets_name, test_tweets_name, glove_embeddings
@@ -105,6 +117,7 @@ def pegasus_properties():
     props = Properties()
     props["pegasus.mode"] = "development"
     props["pegasus.transfer.links"] = "true"
+    #props["pegasus.transfer.bypass.input.staging"] = "true"
     props["pegasus.transfer.threads"] = "8"
     props["pegasus.monitord.encoding"] = "json"
     props["pegasus.catalog.workflow.amqp.events"] = "stampede.*"
@@ -126,6 +139,9 @@ def sites_catalog():
                     Directory(Directory.LOCAL_STORAGE, local_storage_dir)
                         .add_file_servers(FileServer("file://" + local_storage_dir, Operation.ALL))
                 )
+#\
+#                .add_env(key="PEGASUS_TRANSFER_PUBLISH", value="1")\
+#                .add_env(key="PEGASUS_AMQP_URL", value="amqp://panorama:panorama@iris.isi.edu:5674/panorama/monitoring")
 
     donut = Site("donut")\
                 .add_grids(
@@ -150,9 +166,9 @@ def sites_catalog():
                 )\
                 .add_profiles(Namespace.PEGASUS, key="SSH_PRIVATE_KEY", value="${HOME}/.ssh/bosco_key.rsa")\
                 .add_env(key="PEGASUS_HOME", value="${DONUT_USER_HOME}/${PEGASUS_VERSION}")\
-                .add_env(key="PEGASUS_TRANSFER_PUBLISH", value="1")\
-                .add_env(key="PEGASUS_AMQP_URL", value="amqp://panorama:panorama@iris.isi.edu:5674/panorama/monitoring")\
                 .add_env(key="KICKSTART_MON_URL", value="rabbitmq://panorama:panorama@iris.isi.edu:15674/api/exchanges/panorama/monitoring/publish")
+                #.add_env(key="PEGASUS_TRANSFER_PUBLISH", value="1")\
+                #.add_env(key="PEGASUS_AMQP_URL", value="amqp://panorama:panorama@iris.isi.edu:5674/panorama/monitoring")\
         
     sc.add_sites(local, donut)
     sc.write()
@@ -208,8 +224,9 @@ def transformation_catalog():
                         container=crisis_container
                   )\
                   .add_pegasus_profile(cores=16, gpus=1, runtime=14400, grid_start_arguments="-G -m 10")\
-                  .add_env(key="KICKSTART_MON_GRAPHICS_PCIE", value="TRUE")\
-                  .add_env(key="KICKSTART_MON_GRAPHICS_UTIL", value="TRUE")
+                  .add_env(key="KICKSTART_MON_GRAPHICS_PCIE", value="TRUE")
+#\
+#                  .add_env(key="KICKSTART_MON_GRAPHICS_UTIL", value="TRUE")
 
     train_resnet = Transformation(
                         "train_resnet",
@@ -219,8 +236,9 @@ def transformation_catalog():
                         container=crisis_container
                   )\
                   .add_pegasus_profile(cores=16, gpus=1, runtime=14400, grid_start_arguments="-G -m 10")\
-                  .add_env(key="KICKSTART_MON_GRAPHICS_PCIE", value="TRUE")\
-                  .add_env(key="KICKSTART_MON_GRAPHICS_UTIL", value="TRUE")
+                  .add_env(key="KICKSTART_MON_GRAPHICS_PCIE", value="TRUE")
+#\
+#                  .add_env(key="KICKSTART_MON_GRAPHICS_UTIL", value="TRUE")
 
     resnet_inference = Transformation(
                         "resnet_inference",
@@ -230,8 +248,9 @@ def transformation_catalog():
                         container=crisis_container
                   )\
                   .add_pegasus_profile(cores=16, gpus=1, runtime=14400, grid_start_arguments="-G -m 10")\
-                  .add_env(key="KICKSTART_MON_GRAPHICS_PCIE", value="TRUE")\
-                  .add_env(key="KICKSTART_MON_GRAPHICS_UTIL", value="TRUE")
+                  .add_env(key="KICKSTART_MON_GRAPHICS_PCIE", value="TRUE")
+#\
+#                  .add_env(key="KICKSTART_MON_GRAPHICS_UTIL", value="TRUE")
 
     # HPO, training and inference scripts for Bi-LSTM
 
@@ -243,8 +262,9 @@ def transformation_catalog():
                         container=crisis_container
                   )\
                   .add_pegasus_profile(cores=16, gpus=1, runtime=14400, grid_start_arguments="-G -m 10")\
-                  .add_env(key="KICKSTART_MON_GRAPHICS_PCIE", value="TRUE")\
-                  .add_env(key="KICKSTART_MON_GRAPHICS_UTIL", value="TRUE")
+                  .add_env(key="KICKSTART_MON_GRAPHICS_PCIE", value="TRUE")
+#\
+                  #.add_env(key="KICKSTART_MON_GRAPHICS_UTIL", value="TRUE")
 
     train_bilstm = Transformation(
                         "train_bilstm",
@@ -254,8 +274,9 @@ def transformation_catalog():
                         container=crisis_container
                   )\
                   .add_pegasus_profile(cores=16, gpus=1, runtime=14400, grid_start_arguments="-G -m 10")\
-                  .add_env(key="KICKSTART_MON_GRAPHICS_PCIE", value="TRUE")\
-                  .add_env(key="KICKSTART_MON_GRAPHICS_UTIL", value="TRUE")
+                  .add_env(key="KICKSTART_MON_GRAPHICS_PCIE", value="TRUE")
+#\
+#                  .add_env(key="KICKSTART_MON_GRAPHICS_UTIL", value="TRUE")
     
     bilstm_inference = Transformation(
                         "bilstm_inference",
@@ -265,8 +286,9 @@ def transformation_catalog():
                         container=crisis_container
                   )\
                   .add_pegasus_profile(cores=16, gpus=1, runtime=14400, grid_start_arguments="-G -m 10")\
-                  .add_env(key="KICKSTART_MON_GRAPHICS_PCIE", value="TRUE")\
-                  .add_env(key="KICKSTART_MON_GRAPHICS_UTIL", value="TRUE")
+                  .add_env(key="KICKSTART_MON_GRAPHICS_PCIE", value="TRUE")
+#\
+#                  .add_env(key="KICKSTART_MON_GRAPHICS_UTIL", value="TRUE")
 
     # late fusion script
     late_fusion = Transformation(
@@ -277,8 +299,9 @@ def transformation_catalog():
                         container=crisis_container
                   )\
                   .add_pegasus_profile(cores=16, gpus=1, runtime=14400, grid_start_arguments="-G -m 10")\
-                  .add_env(key="KICKSTART_MON_GRAPHICS_PCIE", value="TRUE")\
-                  .add_env(key="KICKSTART_MON_GRAPHICS_UTIL", value="TRUE")
+                  .add_env(key="KICKSTART_MON_GRAPHICS_PCIE", value="TRUE")
+#\
+#                  .add_env(key="KICKSTART_MON_GRAPHICS_UTIL", value="TRUE")
 
 
     tc.add_containers(crisis_container)
