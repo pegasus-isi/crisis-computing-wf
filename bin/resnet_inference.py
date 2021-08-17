@@ -20,7 +20,7 @@ os.environ['MPLCONFIGDIR'] = '/tmp'
 DEVICE = "cpu" #("cuda" if torch.cuda.is_available() else "cpu")
 MEAN = 0.4905, 0.4729, 0.4560 
 STD = 0.2503, 0.2425, 0.2452
-EPOCHS = 1
+EPOCHS = 5
 
 # Paths
 

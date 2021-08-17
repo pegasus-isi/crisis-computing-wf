@@ -12,7 +12,7 @@ import itertools
 import csv
 
 max_len = 150
-epochs = 3
+epochs = 5
 max_features = 1000
 
 DATA_PATH = ''

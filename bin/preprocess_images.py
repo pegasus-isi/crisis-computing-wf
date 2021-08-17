@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import glob
+import os
 import cv2
 IMG_SIZE = 600
 
@@ -16,6 +17,7 @@ def main():
 
     for image_path in images:
         resize_image(image_path)
+        os.remove(image_path)
 
 if __name__ == "__main__":
     main()

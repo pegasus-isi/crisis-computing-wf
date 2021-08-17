@@ -4,6 +4,7 @@ import pandas as pd
 import numpy as np
 import nltk
 import re
+import os
 import argparse
 from nltk.corpus import stopwords
 from itertools import chain
@@ -39,3 +40,4 @@ if __name__ == "__main__":
     tweets_df = pd.read_csv(fname)
     tweets_df['tweet_text'] = tweets_df.apply(lambda x: preprocess_tweets(x['tweet_text']), axis= 1)
     tweets_df.to_csv('preprocessed_' + fname, mode='a', index=False)
+    os.remove(fname)

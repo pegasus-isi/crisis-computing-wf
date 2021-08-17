@@ -30,7 +30,7 @@ max_len = 150
 embed_size = 200
 EMBEDDING_FILE = 'glove.twitter.27B.200d.txt'
 class_weight = {0: 1.48, 1: 0.75}
-epochs = 2
+epochs = 10
 
 
 METRICS = [
@@ -189,7 +189,7 @@ if __name__ == '__main__':
 
     training_history = model.fit(X_train, Y_train, batch_size=128, epochs=epochs,\
                              validation_data = (X_test, Y_test),\
-                             class_weight = class_weight, callbacks=[EarlyStopping(monitor='val_loss',min_delta=0.001)], verbose=1)
+                             class_weight = class_weight, callbacks=[EarlyStopping(monitor='val_loss', patience=10, min_delta=0.0001)], verbose=1)
 
     
     save_plots(np.array(training_history.history['loss']), np.array(training_history.history['val_loss']), 'Loss')
